@@ -13,7 +13,7 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ## Preprocessing Transcriptomics / RNAseq
 
-This R Markdown document is a translation of the Rscript 'Prepare_RNA.R', from the cosmosR github page.
+This R Markdown document is a translation of the Rscripts 'Prepare_RNA.R' and ; Analyze_RNA.R, from the cosmosR (specifically, the FACTOR_COSMOS/scripts/RNA) github page.
 
 ### Loading...
 
@@ -114,9 +114,9 @@ hist(as.numeric(unlist(RNA_log2_FPKM_clean)), breaks = 1000, xlim = c(0,15))
 In the above script, the following things happen:
 
 1.  The data is shown first excluding only 0's (first figure), then excluding everything equal to and higher than 1 (second figure).
-2.  The dataset is copied to a 'clean' version, of which all values below 1 is turned into NA's. Thus filtering out low expression values.
+2.  The dataset is copied to a 'clean' version, of which all values below 1 is turned into NAs. Thus filtering out low expression values.
 3.  The amount of NA values per column are summed, the mean of this is taken (\~14165.68)
-4.  Only genes with less than 45/60 NA's are kept (\>75% NA is filtered out).The amount of genes drop from 23808 to 11265 (47% remains).
+4.  Only genes with less than 45/60 NAs are kept (\>75% NA is filtered out).The amount of genes drop from 23808 to 11265 (47% remains).
 5.  The data is inspected again via histogram, which now nearly resembles a normal distribution.
 
 ### Including Plots
@@ -185,7 +185,7 @@ means <- rowMeans(RNA, na.rm = T)
 RNA <- (RNA - means) / SDs
 ```
 
-## Transcription Factor clustering with normalized weighted mean approach (dorothea + decoupleR)
+### Transcription Factor clustering with normalized weighted mean approach (dorothea + decoupleR)
 
 Transcription Factor(s) will from now on be referred to via TF(s) \### Load resources
 
@@ -194,11 +194,11 @@ load("support/dorothea_df.RData")
 
 ```
 
-## TF actifity calculations per cell line
+### TF actifity calculations per cell line
 
 ```{r}
 TF_activity <- apply(RNA,2,function(x){ # the 2 means per column (== per cell line)
-  x <- as.data.frame(x[which(!is.na(x))]) # put all values in a df, but not NA's!
+  x <- as.data.frame(x[which(!is.na(x))]) # put all values in a df, but not NAs!
   TFs <- run_ulm(as.matrix(x), network = dorothea_df, minsize = 20) 
   # run an ulm (univariate lineare model), using the PKN (prior knowledge network) of dorothea, essentially predicting TF activity based on the available relevant RNA values
   TFs <- as.data.frame(TFs)
@@ -226,7 +226,7 @@ TF_activity_scaled_df <- TF_activity_df
 
 I get it, the above chunk is very big and scary. What is happening? Maybe it was clear from the annotations left by the Cosmos developers (between code) and myself (behind code). If not, here is my cuppa:
 
-1.  In the first chunk, an univariate linear model (ULM) takes all values (excluding NA's) and Dorothea's Prior Knowledge Network (PKN). Based on the scaled RNA values and Dorothea's knowledge on all validated gene regulatory networks (GRNs), it calculates transcription factor activities. This happens in only the first 2-3 lines! After this, the dataset is transformed into a dataframe, of which only the names and values of the transcription factors are kept. (Fleur, if you read this, there is also an option to keep the p-values. I will look up it Dorothea/run_ULM has already chosen only the Tf's with p-value \<0.05).
+1.  In the first chunk, an univariate linear model (ULM) takes all values (excluding NAs) and Dorothea's Prior Knowledge Network (PKN). Based on the scaled RNA values and Dorothea's knowledge on all validated gene regulatory networks (GRNs), it calculates transcription factor activities. This happens in only the first 2-3 lines! After this, the dataset is transformed into a dataframe, of which only the names and values of the transcription factors are kept. (Fleur, if you read this, there is also an option to keep the p-values. I will look up it Dorothea/run_ULM has already chosen only the Tf's with p-value \<0.050 // It has not, but I cannot find a way to extract the p-values. ).
 
 2.  TF_activities is then transformed into a proper df, instead of the abomination that the chunk above produces.
 
@@ -241,7 +241,7 @@ TF_activity_scaledrank_df <- as.data.frame(apply(TF_activity_df[complete.cases(T
 
 ```
 
-### Visualisation between cell lines
+### Visualization between cell lines
 
 ```{r}
 ## Visualize correlation of TFs between different cell lines
@@ -262,7 +262,7 @@ The cell lines are plotted both on thex and y-axis. Cell lines that have similar
 
 As they have different cell lines, I do think this is interesting data. However, we have one cell line (PGA-1) so I think this data will be less interesting to us. To make sure it is not interesting whatsoever, we will plot this anyway. The annotations will be less.
 
-### Optimal number of clusters determination
+## [OPTIONAL] Optimal number of clusters determination
 
 Method 1: Silhouette method
 
@@ -491,7 +491,7 @@ Now they save the clusters using the following code, that I will comment out bec
 
 ```
 
-## Gene reduction?
+## [Not Optional] Gene reduction
 
 After all the clustering stuff, the authors start a section called 'Justify reduction of genes'. It starts off reimporting some already imported libraries. Hence I commented this out. If you want to do this in a separate script, these are the libraries I think you might need:
 
@@ -517,7 +517,7 @@ rownames(RNA) <- RNA[,1]
 RNA <- RNA[,-1]
 ```
 
-Removing genes with excessive (\>1/3) NAs and loading dorothea
+Removing genes with excessive (\>1/3) NAs and loading dorothea (Will need to change this to CollecTRI) or do I?
 
 ```{r}
 # Remove genes with excessive amount of NAs (only keep genes with max. amount of NAs = 33.3 % across cell lines)
@@ -567,27 +567,31 @@ for(i in c(seq(1,dim(RNA)[1],200))){ # From 1 to rowcount of RNA, by = 200
                                    "Number_of_TFs"=length(overlap_TF),
                                    "Number_of_genes"=i)
   results_table[[i]][is.na(results_table[[i]])] <- 0 
-  print(i)
+  # print(i)
 }
 
 ```
 
 Let's look at the above chunk step-by-step.
 
-1.  Iterating per 200 steps over the rows of RNA. (1 row = 1 gene) The standard deviation is calculated over the 1- to ith values (so an increasing number of rows, 42 iterations)
-2.  The normalized gene data is mapped onto the dorothea networks (excluding NA's) to find TF activities
-3.  Only unique TF activities are sampled. The ones that are overlapping are being merged into 1, in the following steps
-    1.  
-4.   for each row, the mean, sd, n TFs and number of genes used is listed in the results_table
+1.  Iterating per 200 steps over the rows of RNA. (1 row = 1 gene) The standard deviation is calculated over the 1- to i'th values (so an increasing number of rows, 42 iterations)
 
-These results are then saved and reloaded bc why not:
+2.  The normalized gene data is mapped onto the dorothea networks (excluding NAs) to find TF activities
+
+3.  Only unique TF activities are sampled. The ones that are overlapping are being merged into 1, in the following steps
+
+    1.  
+
+4.  for each row, the mean, sd, n TFs and number of genes used is listed in the results_table
+
+These results are then saved and reloaded because why not:
 
 ```{r}
 # save(results_table,file = "results/RNA/TF_TFtarget_gene_reduction.Rdata")
 load(file = "results/RNA/TF_TFtarget_gene_reduction.Rdata")
 ```
 
-And the results table turned into a df?
+And the results table turned into a df:
 
 ```{r}
 ## From list to data frame
@@ -597,7 +601,7 @@ for (i in c(1:length(results_table))) {
 }
 ```
 
-results table is then plotted:
+Results table is then plotted:
 
 ```{r}
 ## Plot result with two y axis (function of TF targets and TFs depending on number of genes)
@@ -631,7 +635,6 @@ and this plot is saved
 ggsave(file="results/RNA/TF_TFtarget_gene_reduction.pdf", device = "pdf", plot = plot, width = 5, height = 2.2)
 
 ```
-
 
 This is me plotting the plot because why NOT
 
