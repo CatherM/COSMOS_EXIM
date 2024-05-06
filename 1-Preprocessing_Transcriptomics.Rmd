@@ -46,10 +46,35 @@ library(OmnipathR)
 
 ```
 
+If you are missing any libraries, specifically from Bioconductor, here uncomment any of the below:
+
+```{r}
+########## decoupleR
+# if (!require("BiocManager", quietly = TRUE))
+#     install.packages("BiocManager")
+# 
+# BiocManager::install("decoupleR")
+
+########## GSEABase
+# if (!require("BiocManager", quietly = TRUE))
+#     install.packages("BiocManager")
+# 
+# BiocManager::install("GSEABase")
+
+########## OmnipathR
+if (!require("BiocManager", quietly = TRUE))
+    install.packages("BiocManager")
+
+BiocManager::install("OmnipathR")
+```
+
 Loading data.
 
 ```{r}
 RNA_log2_FPKM <- as.data.frame(read_excel(path="data/RNA/RNA__RNA_seq_composite_expression.xls", skip = 10, sheet = 1))
+
+# Our data would be:
+# RNA_log2_FPKM <- as.data.frame(read_excel(path="data/Transcriptomics/EC024_raw counts.xls", sheet = 1))
 
 ```
 
@@ -62,9 +87,14 @@ However, this will change to our own data. (Hopefully)
 Extracting RNAseq measurements and aligning cell line names.
 
 ```{r}
+# Remove column 2 through 6 (Gene ID, chromosome, Start, End, Cytoband):
 RNA_log2_FPKM <- RNA_log2_FPKM[,-c(2:6)] 
+
+# Change first column to rowname, then remove first column:
 rownames(RNA_log2_FPKM) <- RNA_log2_FPKM[,1] 
 RNA_log2_FPKM <- RNA_log2_FPKM[,-1] 
+
+# Reformat names of columns 
 names(RNA_log2_FPKM) <- gsub(".*[:]","",names(RNA_log2_FPKM)) 
 RNA_log2_FPKM <- RNA_log2_FPKM[,order(colnames(RNA_log2_FPKM))]
 names(RNA_log2_FPKM) <- gsub("MDA-MB-231", "MDA-MB-231/ATCC", names(RNA_log2_FPKM)) 
@@ -224,7 +254,7 @@ colnames(TF_activity_df) <- names(TF_activity)
 TF_activity_scaled_df <- TF_activity_df
 ```
 
-I get it, the above chunk is very big and scary. What is happening? Maybe it was clear from the annotations left by the Cosmos developers (between code) and myself (behind code). If not, here is my cuppa:
+What is happening in the chunk above:
 
 1.  In the first chunk, an univariate linear model (ULM) takes all values (excluding NAs) and Dorothea's Prior Knowledge Network (PKN). Based on the scaled RNA values and Dorothea's knowledge on all validated gene regulatory networks (GRNs), it calculates transcription factor activities. This happens in only the first 2-3 lines! After this, the dataset is transformed into a dataframe, of which only the names and values of the transcription factors are kept. (Fleur, if you read this, there is also an option to keep the p-values. I will look up it Dorothea/run_ULM has already chosen only the Tf's with p-value \<0.050 // It has not, but I cannot find a way to extract the p-values. ).
 
@@ -232,7 +262,9 @@ I get it, the above chunk is very big and scary. What is happening? Maybe it was
 
 3.  The option to scale the TF activities afterwards is commented out, as the RNA's were already scaled. If you used non-scaled RNA data for this, I suggest you scale that first. If you are headstrong or lazy, uncomment this section and run this to scale the TF activities.
 
-In the next section, transcription factor activities are further transformed and analyzed. \### Ranked TF
+In the next section, transcription factor activities are further transformed and analyzed.
+
+\### Ranked TF
 
 ```{r}
 # ## Convert values to ranks (from lowest to highest activity) with only complete cases
@@ -536,12 +568,12 @@ Then, depending on the size of the gene dataset, the TFs and the mean number of 
 results_table <- list()
 for(i in c(seq(1,dim(RNA)[1],200))){ # From 1 to rowcount of RNA, by = 200
   
-  RNA_sd <- sort(apply(RNA, 1, function(x) sd(x,na.rm = T)), decreasing = T) # the 1 indicates rows. 
+  RNA_sd <- sort(apply(RNA, 1, function(x) sd(x,na.rm = T)), decreasing = T) # the 1 indicates rows. Rows are sorted by decreasing sd
   RNA_sd <- RNA_sd[1:i]
-  RNA_reduced <- RNA[names(RNA_sd),]
+  RNA_reduced <- RNA[names(RNA_sd),] # Basically creates a subset of the RNA's of 1:i? in which i is a mulitple of 200?
   
   ## Normalize gene data across cell lines 
-  SDs <- apply(RNA_reduced,1,function(x){sd(x,na.rm = T)}) # SD is calculated per gene (row)
+  SDs <- apply(RNA_reduced,1,function(x){sd(x,na.rm = T)}) # SD is calculated per gene (row) (again)
   means <- rowMeans(RNA_reduced, na.rm = T) # Mean is also calculated per gene  (row)
   RNA_reduced <- (RNA_reduced - means) / SDs # (RNA - mean ) / SD == z-score, normalized RNA values across all cell lines
   
@@ -554,7 +586,7 @@ for(i in c(seq(1,dim(RNA)[1],200))){ # From 1 to rowcount of RNA, by = 200
   ## Extract overlapping TFs
   overlap_TF <- lapply(c(1:length(TF_activity_reduced)),function(x) unique(TF_activity_reduced[[x]]$source)) %>%
     reshape2::melt() %>%
-    count(value)
+    count(value) # Tallies how often the x appears?
   overlap_TF <- unique(overlap_TF[overlap_TF$n==length(TF_activity_reduced),1])
   TF_activity_reduced <- lapply(c(1:length(TF_activity_reduced)),function(x) TF_activity_reduced[[x]][TF_activity_reduced[[x]]$source %in% overlap_TF,])
   
@@ -578,9 +610,7 @@ Let's look at the above chunk step-by-step.
 
 2.  The normalized gene data is mapped onto the dorothea networks (excluding NAs) to find TF activities
 
-3.  Only unique TF activities are sampled. The ones that are overlapping are being merged into 1, in the following steps
-
-    1.  
+3.  Only unique TF activities are sampled. The ones that are overlapping are being merged into 1 using melt
 
 4.  for each row, the mean, sd, n TFs and number of genes used is listed in the results_table
 
@@ -643,3 +673,5 @@ plot
 ```
 
 This plot shows the correlation between the total number of genes, TFs and the average TF targets per TF. What I am taking from this plot is that for 3000-8000 genes, the amount of TF's does increase, but the average number of TF targets per TF does not.
+
+Interpret this further. The average amount of transcription factor targets does not grow with the increased number of genes. Why not?

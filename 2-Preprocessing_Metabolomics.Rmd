@@ -9,7 +9,7 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-## Prepare metabolomic
+## Prepare metabolomics
 
 This R Markdown document is a translation of the Rscripts 'Prepare_metabolomic.R', from the cosmosR (specifically, the FACTOR_COSMOS/scripts/metabolomic) github page.
 
@@ -21,7 +21,7 @@ library(tidyr)
 library(reshape2)
 library(pheatmap)
 library(vsn)
-# BiocManager::install("vsn") # in case you do not have it yet |  I did not. 
+# BiocManager::install("vsn") # in case you do not have it yet |  I did not.
 library(rcompanion)
 library(dplyr)
 library(ggplot2)
@@ -33,16 +33,17 @@ library(ggplot2)
 ```{r}
 
 # Metabolomic Data From Metabolon - data averaged from triplicate experiments (from https://wiki.nci.nih.gov/display/NCIDTPdata/Molecular+Target+Data)
-#metabs <- as.data.frame(read_csv("data/metabolomic/WEB_DATA_METABOLON.TXT")) 
+# metabs <- as.data.frame(read_csv("data/metabolomic/WEB_DATA_METABOLON.TXT"))
 
 # Metabolomic Data From Metabolon - individual data from each of the triplicate experiments (from https://wiki.nci.nih.gov/display/NCIDTPdata/Molecular+Target+Data)
 metabs <- as.data.frame(read_csv("data/metabolomic/WEB_DATA_METABOLON_ALL.TXT")) 
 
 ```
 
-Hopefully, one day an extra line of code, it being our data, will be added to this <3 
+Hopefully, one day an extra line of code, it being our data, will be added to this \<3
 
 ### Filter step I
+
 First filtering step is to remove unclear metabolite measurements:
 
 ```{r}
@@ -52,7 +53,6 @@ metabs <- metabs[!grepl("Isobar",metabs$TITLE),]
 metabs <- metabs[!grepl("^X[-]",metabs$TITLE),]
 metabs <- metabs[!grepl("^Possible",metabs$TITLE),]
 ```
-
 
 Next, the triplicates are merged into one by calculating the mean of sample values??
 
@@ -64,9 +64,9 @@ metabs <- metabs %>%
   as.data.frame()
 ```
 
-## Plotting the distribution of metabolitle values
+## Plotting the distribution of metabolite values
 
-
+Each cell line is plotted as a violin, each log2 of the mean value is plotted
 
 ```{r pressure, echo=FALSE}
 # Inspect distribution of values
@@ -101,6 +101,7 @@ ggplot(metabs, aes(x = cellname, y = log2(mean))) + geom_violin() +
 
 plotNormalHistogram(log2(metabs$mean),breaks = 1000, xlim = c(-10,12))
 ```
+
 ### Reframe dataframe to Sample X Metabolite
 
 ... and do not normalize apparently
@@ -126,11 +127,10 @@ metabs_df <- metabs_df[,-1]
 #         axis.ticks.x=element_blank())
 ```
 
-
 Why is this commented out???
 
-
 ### Reformatting names
+
 Chanigng them to the HMDB names. Consistency is Key. Though, would you not expect to reformat the named before removing triplicates?
 
 ```{r}
@@ -157,4 +157,3 @@ write_csv(metabs_df_clean, file = "data/metabolomic/metabolomic_clean_vsn.csv")
 metabs_df <- cbind("metabolite" = rownames(metabs_df), metabs_df)
 write_csv(metabs_df, file = "data/metabolomic/metabolomic_vsn.csv")
 ```
-
