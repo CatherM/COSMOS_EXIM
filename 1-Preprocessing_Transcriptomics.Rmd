@@ -13,7 +13,7 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ## Preprocessing Transcriptomics / RNAseq
 
-This R Markdown document is a translation of the Rscripts 'Prepare_RNA.R' and ; Analyze_RNA.R, from the cosmosR (specifically, the FACTOR_COSMOS/scripts/RNA) github page.
+This R Markdown document is a translation of the Rscripts 'RNA.R' from the Factor_COSMOS github page, specifically the no_MOFA branch. The script can be found at Factor_COSMOS/scripts/RNA.R
 
 ### Loading...
 
@@ -23,7 +23,6 @@ Loading libraries:
 library(readr)
 
 ```
-
 
 Loading data and reformatting.
 
@@ -50,35 +49,36 @@ RNA_log2_FPKM <- RNA_log2_FPKM[,-1]
 
 Right now, this is Fragments per kilobase per million reads log2(FPKM + 1) --\> RNAseq, composite expression from <https://discover.nci.nih.gov/cellminer/datasets.do> ([https://discover.nci.nih.gov/cellminer/loadDownload.do)](https://discover.nci.nih.gov/cellminer/loadDownload.do))
 
+### Plotting
 
-### Plotting 
 ```{r}
 hist(as.numeric(unlist(RNA_log2_FPKM)), breaks = 1000) 
 ```
 
-
 Removing outliers:
+
 ```{r}
 RNA_log2_FPKM[RNA_log2_FPKM < 1] <- NA
 hist(as.numeric(unlist(RNA_log2_FPKM)), breaks = 1000) 
 ```
 
 Remove rows that have more than 45 NA's
+
 ```{r}
 RNA_log2_FPKM <- RNA_log2_FPKM[rowSums(is.na(RNA_log2_FPKM)) < 45,]
 # RNA_log2_FPKM <- RNA_log2_FPKM[rowSums(RNA_log2_FPKM == 0) < 45,]
 hist(as.numeric(unlist(RNA_log2_FPKM)), breaks = 1000) 
 ```
 
-
 ## Only keep cell lines that are both in metabolomics and transcriptomics
 
-We do not have to do this, as we have CLL patients and HDs, not cell lines. 
+We do not have to do this, as we have CLL patients and HDs, not cell lines.
+
 ```{r}
 
 metabolomic_clean_vsn <- as.data.frame(read_csv("data/metabolomic/metabolomic_clean_vsn.csv"))
 
-# Merge them
+# Merge them based only on the columns (cell lines) that are in both
 
 cell_lines <- intersect(names(metabolomic_clean_vsn[,-1]),names(RNA_log2_FPKM))
 
@@ -94,4 +94,3 @@ RNA_log2_FPKM <- RNA_log2_FPKM[,c(59,1:58)]
 write_csv(RNA_log2_FPKM,file = "data/RNA/RNA_log2_FPKM_cleaned_common.csv")
 write_csv(metabolomic_clean_vsn, file = "data/metabolomic/metabolomic_clean_vsn_common.csv")
 ```
-

@@ -142,8 +142,10 @@ write_csv(to_write, file = "data/metabolomic/metabolomic_clean_vsn.csv")
 ```
 
 ### Scaling
-(Z-score normalization)
+(Z-score Normalization)
 Why is this done after saving the csv file?
+Because it is also the first step done in the prepare_cosmos_inputs.R file.
+
 ```{r}
 samples <- names(metabs_df)
 metabs <- row.names(metabs_df)
