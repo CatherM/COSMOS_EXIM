@@ -1,0 +1,144 @@
+---
+title: "2-Preprocessing_Metabolomics"
+author: "Cathy Magnée"
+date: "2024-04-22"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Prepare metabolomics data
+
+This R Markdown document is a translation of the Rscript 'metabolomic.R', from Saezlabs Github page Factos_COSMOS, specifically the no_MOFA branch. This page can be found here <https://github.com/saezlab/Factor_COSMOS/tree/no_MOFA/scripts>
+
+
+### Loading libraries
+
+```{r}
+library(readr)
+library(reshape2)
+library(pheatmap)
+library(vsn)
+
+
+# if (!require("BiocManager", quietly = TRUE))
+#     install.packages("BiocManager")
+# 
+# BiocManager::install("metaboliteIDmapping")
+
+library(metaboliteIDmapping)
+
+```
+
+### Loading data
+
+```{r}
+
+# Metabolomic Data From Metabolon - data averaged from triplicate experiments (from https://wiki.nci.nih.gov/display/NCIDTPdata/Molecular+Target+Data)
+# metabs <- as.data.frame(read_csv("data/metabolomic/WEB_DATA_METABOLON.TXT"))
+
+# Metabolomic Data From Metabolon - individual data from each of the triplicate experiments (from https://wiki.nci.nih.gov/display/NCIDTPdata/Molecular+Target+Data)
+
+# metabs <- as.data.frame(read_csv("data/metabolomic/WEB_DATA_METABOLON.TXT")) # Original file
+
+metabs <- as.data.frame(read_csv("data/metabolomic/WEB_DATA_METABOLON_ALL.TXT")) # Added _ALL
+
+
+
+```
+
+Hopefully, one day an extra line of code, it being our data, will be added to this \<3
+
+### Filter step I
+
+First filtering step is to remove unclear metabolite measurements:
+
+```{r}
+
+# Remove unclear metabolite measurements
+metabs <- metabs[!grepl("Isobar",metabs$TITLE),]
+metabs <- metabs[!grepl("^X[-]",metabs$TITLE),]
+metabs <- metabs[!grepl("^Possible",metabs$TITLE),]
+```
+
+
+
+```{r}
+
+# metabs_df <- dcast(metabs, formula = TITLE~cellname, value.var = "VALUE",fun.aggregate = mean)
+metabs_df <- dcast(metabs, formula = TITLE~cellname, value.var = "Value",fun.aggregate = mean) # For when using ALL metabolons
+row.names(metabs_df) <- metabs_df$TITLE
+metabs_df <- metabs_df[,-1]
+
+```
+
+## Plotting the distribution of metabolite values
+Histogram:
+```{r pressure, echo=FALSE}
+# Inspect distribution of values
+hist(as.numeric(unlist(log2(metabs_df))), breaks = 1000) #Things looks like they are getting funky around 5
+
+# The above is Saezlab's commenting. IMHO, when looking at the graph below, things are mostly "funky" between -5 and 0. But maybe I do not have the required knowledge and experience about metabolomics data to understand what is funky about >5
+
+```
+Heatmap:
+```{r}
+pheatmap(log2(metabs_df), show_colnames = F, show_rownames = F) 
+
+```
+It is ugly and I do need help interpreting this tbh
+
+
+
+
+### Removing outliers
+
+```{r}
+
+# Remove extreme values (outliers)
+metabs_df[abs(log2(metabs_df)) > 5] <- NA 
+
+```
+
+### NO idea what they do here
+```{r}
+fit <- vsnMatrix(as.matrix(metabs_df))
+meanSdPlot(fit)
+metabs_df <- as.data.frame(vsn::predict(fit,as.matrix(metabs_df)))
+```
+Heatmap again:
+
+```{r}
+pheatmap(metabs_df[complete.cases(metabs_df),], show_colnames = T, show_rownames = F, cluster_rows = F) 
+
+```
+### Reformatting ?
+
+```{r}
+to_write <- metabs_df
+to_write$metabolite <- row.names(to_write)
+to_write <- to_write[,c(59,1:58)]
+to_write$metabolite <- gsub(",","",to_write$metabolite)
+```
+
+### Saving
+```{r}
+write_csv(to_write, file = "data/metabolomic/metabolomic_clean_vsn.csv")
+```
+
+### ??
+```{r}
+samples <- names(metabs_df)
+metabs <- row.names(metabs_df)
+
+SDs <- apply(metabs_df,1,function(x){sd(x,na.rm = T)})
+means <- rowMeans(metabs_df, na.rm = T)
+
+metabs_df_scaled <- (metabs_df - means) / SDs
+pheatmap(metabs_df_scaled[complete.cases(metabs_df_scaled),], show_colnames = T, show_rownames = F, cluster_rows = F) 
+
+hist(as.numeric(unlist(metabs_df)), breaks = 1000) 
+```
+
