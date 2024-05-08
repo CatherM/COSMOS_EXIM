@@ -21,19 +21,22 @@ library(readr)
 library(reshape2)
 library(pheatmap)
 library(vsn)
-
+library(metaboliteIDmapping)
 
 # if (!require("BiocManager", quietly = TRUE))
 #     install.packages("BiocManager")
 # 
 # BiocManager::install("metaboliteIDmapping")
+# BiocManager::install("vsn")
 
-library(metaboliteIDmapping)
+
 
 ```
 
 ### Loading data
 
+There are two dataset options: WEB_DATA_METABOLON.txt and WEB_DATA_METABOLON_ALL.txt
+The difference is found in the fact that the data comes from triplicate experiments. In the first dataset, the data from the triplicates is averaged. In the second dataset, the individual data from each of the triplicate experiments is present. we are loading the one where the triplicates data is already averaged. 
 ```{r}
 
 # Metabolomic Data From Metabolon - data averaged from triplicate experiments (from https://wiki.nci.nih.gov/display/NCIDTPdata/Molecular+Target+Data)
@@ -41,20 +44,15 @@ library(metaboliteIDmapping)
 
 # Metabolomic Data From Metabolon - individual data from each of the triplicate experiments (from https://wiki.nci.nih.gov/display/NCIDTPdata/Molecular+Target+Data)
 
-# metabs <- as.data.frame(read_csv("data/metabolomic/WEB_DATA_METABOLON.TXT")) # Original file
+metabs <- as.data.frame(read_csv("data/metabolomic/WEB_DATA_METABOLON.TXT")) # Original file
 
-metabs <- as.data.frame(read_csv("data/metabolomic/WEB_DATA_METABOLON_ALL.TXT")) # Added _ALL
-
-
+# metabs <- as.data.frame(read_csv("data/metabolomic/WEB_DATA_METABOLON_ALL.TXT")) # Added _ALL
 
 ```
 
-Hopefully, one day an extra line of code, it being our data, will be added to this \<3
-
-### Filter step I
+### Filtering steps
 
 First filtering step is to remove unclear metabolite measurements:
-
 ```{r}
 
 # Remove unclear metabolite measurements
@@ -64,23 +62,34 @@ metabs <- metabs[!grepl("^Possible",metabs$TITLE),]
 ```
 
 
-
+Filtering Step II: Reformatting the dataframe. 
 ```{r}
+# Use one of two lines depending if you use the averaged or the all triplicates dataset. 
+# Averaged:
+metabs_df <- dcast(metabs, formula = TITLE~cellname, value.var = "VALUE",fun.aggregate = mean) 
 
-# metabs_df <- dcast(metabs, formula = TITLE~cellname, value.var = "VALUE",fun.aggregate = mean)
-metabs_df <- dcast(metabs, formula = TITLE~cellname, value.var = "Value",fun.aggregate = mean) # For when using ALL metabolons
-row.names(metabs_df) <- metabs_df$TITLE
-metabs_df <- metabs_df[,-1]
+# _ALL / Triplicates:
+# metabs_df <- dcast(metabs, formula = TITLE~cellname, value.var = "Value",fun.aggregate = mean)
 
 ```
+The above line of code reshapes the data from a molten dataframe (just very long, 8062x9) to a summarized dataframe with only the cell lines, metabolite, and average values for when multiple are available.
+The resulting df, metabs_df, is shape 139x59. It has lost some metadata that is not needed for this experiment.
+
+Filtering Step III: Changing first column to rownames
+```{r}
+row.names(metabs_df) <- metabs_df$TITLE
+metabs_df <- metabs_df[,-1]
+```
+
 
 ## Plotting the distribution of metabolite values
-Histogram:
+Histogram to inspect distributions 
 ```{r pressure, echo=FALSE}
 # Inspect distribution of values
 hist(as.numeric(unlist(log2(metabs_df))), breaks = 1000) #Things looks like they are getting funky around 5
 
-# The above is Saezlab's commenting. IMHO, when looking at the graph below, things are mostly "funky" between -5 and 0. But maybe I do not have the required knowledge and experience about metabolomics data to understand what is funky about >5
+# The above is Saezlab's commenting. IMHO, when looking at the graph below, things are mostly "funky" between -5 and 0. But maybe I do not have the required knowledge and experience about metabolomics data to understand what is funky about >5.
+
 
 ```
 Heatmap:
@@ -88,13 +97,13 @@ Heatmap:
 pheatmap(log2(metabs_df), show_colnames = F, show_rownames = F) 
 
 ```
-It is ugly and I do need help interpreting this tbh
+
 
 
 
 
 ### Removing outliers
-
+Outlier == Everything below -5 and above 5. 
 ```{r}
 
 # Remove extreme values (outliers)
@@ -102,20 +111,24 @@ metabs_df[abs(log2(metabs_df)) > 5] <- NA
 
 ```
 
-### NO idea what they do here
+### Variance Stabilizing Normalization
+the vsnMatrix method is used to stabilize variance across the data. 
+The plot shows the relationship between the standard deviation and the mean of the data after VSN normalization
+The last step applies the VSN normalization transformation learned from fit to the meta_df data. In short: OG data is replaced with the normalized data
 ```{r}
 fit <- vsnMatrix(as.matrix(metabs_df))
 meanSdPlot(fit)
 metabs_df <- as.data.frame(vsn::predict(fit,as.matrix(metabs_df)))
 ```
-Heatmap again:
+Heatmap again, this time using only complete cases:
 
 ```{r}
 pheatmap(metabs_df[complete.cases(metabs_df),], show_colnames = T, show_rownames = F, cluster_rows = F) 
 
 ```
-### Reformatting ?
+### Reformatting
 
+Changing the first column into rownames. 
 ```{r}
 to_write <- metabs_df
 to_write$metabolite <- row.names(to_write)
@@ -128,7 +141,9 @@ to_write$metabolite <- gsub(",","",to_write$metabolite)
 write_csv(to_write, file = "data/metabolomic/metabolomic_clean_vsn.csv")
 ```
 
-### ??
+### Scaling
+(Z-score normalization)
+Why is this done after saving the csv file?
 ```{r}
 samples <- names(metabs_df)
 metabs <- row.names(metabs_df)
