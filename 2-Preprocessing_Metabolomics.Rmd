@@ -9,7 +9,7 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-## Prepare metabolomics
+## Prepare metabolomics data
 
 This R Markdown document is a translation of the Rscripts 'Prepare_metabolomic.R', from the cosmosR (specifically, the FACTOR_COSMOS/scripts/metabolomic) github page.
 
