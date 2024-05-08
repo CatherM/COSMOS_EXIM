@@ -1,0 +1,76 @@
+---
+title: "4-Run_CosmosR"
+author: "Cathy Magnée, Saezlab"
+date: "2024-05-08"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Run COSMOS
+This document is the annotated version of the run_cosmos.R script that can be found on Saezlab's Factor_COSMOS github main branch, in the subfolder scripts, here: <https://github.com/saezlab/Factor_COSMOS/blob/main/scripts/run_cosmos.R>
+
+### Installing packages, loading libraries, loading data
+
+If you do not have them yet, please properly install CARNIVAL and COSMOS from Github:
+
+```{r}
+# remotes::install_github("saezlab/cosmosR")
+# install.packages("devtools")
+# devtools::install_github("saezlab/CARNIVAL")
+```
+
+Libraries:
+```{r}
+library(cosmosR)
+library(readr)
+library(dplyr)
+```
+Loading data:
+Select which cell line (for us, which patient??) you wish to analyze
+```{r}
+data("meta_network")
+
+meta_network <- meta_network_cleanup(meta_network)
+
+load("Factor_COSMOS/data/cosmos/cosmos_inputs.RData")
+
+```
+
+### Selecting cell line to analyze
+```{r}
+names(cosmos_inputs)
+
+cell_line <- "786-0" # Select cell line you want to analyze with cosmos HERE
+
+
+sig_input <- cosmos_inputs[[cell_line]]$TF_scores
+metab_input <- cosmos_inputs[[cell_line]]$metabolomic
+RNA_input <- cosmos_inputs[[cell_line]]$RNA
+```
+
+### Parameters
+
+Choose which compartment to assign to the metabolic measurements:
+Possible values are "r", "c", "e", "x", "m", "l", "n" and "g"
+"r", 
+"c", 
+"e",
+"x", 
+"m", 
+"l", 
+"n",
+"g",
+
+```{r}
+#Choose which compartment to assign to the metabolic measurments
+metab_input <- prepare_metab_inputs(metab_input, c("c","m"))
+
+##Filter significant inputs
+sig_input <- sig_input[abs(sig_input) > 2]
+metab_input <- metab_input[abs(metab_input) > 2]
+
+```
+
