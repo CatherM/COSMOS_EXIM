@@ -31,6 +31,8 @@ library(dplyr)
 Loading data:
 Select which cell line (for us, which patient??) you wish to analyze
 ```{r}
+source("Factor_COSMOS/scripts/decoupleRnival.R")
+
 data("meta_network")
 
 meta_network <- meta_network_cleanup(meta_network)
@@ -54,15 +56,15 @@ RNA_input <- cosmos_inputs[[cell_line]]$RNA
 ### Parameters
 
 Choose which compartment to assign to the metabolic measurements:
-Possible values are "r", "c", "e", "x", "m", "l", "n" and "g"
-"r", 
-"c", 
-"e",
-"x", 
-"m", 
-"l", 
-"n",
-"g",
+Possible values are "r", "c", "e", "x", "m", "l", "n" and "g". More info here <http://bigg.ucsd.edu/compartments> 
+"r", endoplasmic reticulum
+"c", cytosol
+"e", extracellular space
+"x", peroxisome / glyoxysome
+"m", mitochondria
+"l", lysosome
+"n", nucleus
+"g", golgi apparatus
 
 ```{r}
 #Choose which compartment to assign to the metabolic measurments
