@@ -27,6 +27,7 @@ Libraries:
 library(cosmosR)
 library(readr)
 library(dplyr)
+library(CARNIVAL)
 ```
 Loading data:
 Select which cell line (for us, which patient??) you wish to analyze
@@ -45,7 +46,7 @@ load("Factor_COSMOS/data/cosmos/cosmos_inputs.RData")
 ```{r}
 names(cosmos_inputs)
 
-cell_line <- "786-0" # Select cell line you want to analyze with cosmos HERE
+cell_line <- "EKVX" # Select cell line you want to analyze with cosmos HERE
 
 
 sig_input <- cosmos_inputs[[cell_line]]$TF_scores
@@ -67,12 +68,54 @@ Possible values are "r", "c", "e", "x", "m", "l", "n" and "g". More info here <h
 "g", golgi apparatus
 
 ```{r}
-#Choose which compartment to assign to the metabolic measurments
+#Choose which compartment to assign to the metabolic measurements
 metab_input <- prepare_metab_inputs(metab_input, c("c","m"))
 
 ##Filter significant inputs
 sig_input <- sig_input[abs(sig_input) > 2]
 metab_input <- metab_input[abs(metab_input) > 2]
 
+```
+
+
+## IBM Cplex Options
+```{r}
+#In order to adapt options to users specification we can load them into a variable 
+#that will then be passed to preprocess_COSMOS_signaling_to_metabolism CARNIVAL_options parameter
+my_options <- default_CARNIVAL_options(solver = "cplex")
+
+#Here the user should provide a path to its CPLEX executable (only cplex at the moment, other solvers will be documented soon !)
+# my_options$solverPath <- "~/Documents/cplex" #or cbc solver executable
+my_options$solverPath <- "C:/Program Files/IBM/ILOG/CPLEX_Studio2211/cplex/bin/x64_win64"
+# my_options$solverPath <- "cbc/cbc-osx/cbc" #or cbc solver executable
+my_options$solver <- "cplex" #or cbc
+# my_options$solver <- "cbc"
+my_options$timelimit <- 3600/10
+my_options$mipGAP <- 0.05
+my_options$threads <- 6
+```
+Note: You need IBM Cplex for this, your location may be different from mine. 
+
+
+## Preprocessing signalling to metab
+
+Use this only if preprocess_COSMOS_signaling_to_metabolism does not work:
+```{r}
+# source("Factor_COSMOS/scripts/decoupleRnival.R")
+```
+
+
+```{r}
+metab_input <- cosmosR:::filter_input_nodes_not_in_pkn(metab_input, meta_network)
+sig_input <- cosmosR:::filter_input_nodes_not_in_pkn(sig_input, meta_network)
+
+test_for <- preprocess_COSMOS_signaling_to_metabolism(meta_network = meta_network[,c(1,3,2)],
+                                                      signaling_data = sig_input,
+                                                      metabolic_data = metab_input,
+                                                      diff_expression_data = RNA_input,
+                                                      maximum_network_depth = 4,
+                                                      remove_unexpressed_nodes = T,
+                                                      filter_tf_gene_interaction_by_optimization = T,
+                                                      CARNIVAL_options = my_options)
 ```
 
