@@ -45,8 +45,8 @@ to analyze
 ```{r}
 # source("Factor_COSMOS/scripts/decoupleRnival.R")
 
-# data("meta_network")
-load("meta_network.RData")
+data("meta_network")
+# load("meta_network.RData")
 
 meta_network <- meta_network_cleanup(meta_network)
 
@@ -56,6 +56,7 @@ load("data/cosmos/native/cosmos_inputs.RData")
 ```
 
 metanetwork.RData can be found here <https://github.com/saezlab/Factor_COSMOS/blob/MOFA_COSMOS_pipeline/support/meta_network.RData>
+cosmos_inputs.RData can be found here: <https://github.com/saezlab/Factor_COSMOS/blob/no_MOFA/data/cosmos/cosmos_inputs.RData>
 
 
 ### Selecting cell line to analyze
@@ -139,11 +140,6 @@ Different errors: Different solutions.
 checkPerturbations error: Increase maximum_network_depth.
 
 
-The above code chunk now works on my personal computer, but not on the
-AMC computer, as I am getting the error (insert error here please future
-Cathy \<3 ). For this reason, I will be using my personal computer until
-further notice.
-
 ### Running signallling to metabolism
 
 ```{r}
@@ -180,8 +176,8 @@ test_back <- preprocess_COSMOS_metabolism_to_signaling(meta_network = meta_netwo
                                                       metabolic_data = metab_input,
                                                       diff_expression_data = RNA_input,
                                                       maximum_network_depth = 5,
-                                                      remove_unexpressed_nodes = T,
-                                                      filter_tf_gene_interaction_by_optimization = T,
+                                                      remove_unexpressed_nodes = TRUE,
+                                                      filter_tf_gene_interaction_by_optimization = TRUE,
                                                       CARNIVAL_options = my_options)
 ```
 
