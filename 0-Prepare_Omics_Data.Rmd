@@ -1,0 +1,191 @@
+---
+title: "0-Prepare_Omics_Data"
+author: "Cathy Magnée"
+date: "2024-05-21"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Prepare omics data 
+
+This R Markdown document is meant for preparing the metabolomic and transcriptomics (RNA) data used in this project. The data can not be included on the public github, as the article is not published yet. 
+This research uses transcriptomic (RNA) and metabolomic data from CD3+ T cells of CLL patients and healthy donors.
+
+Data source: Jacobs, C. F. & Camerini, E. CD3+ T cells from CLL patients and age-matched Healthy Donors. (Future).
+
+The following preparations to the data are in this document:
+- Column names are made uniform. 
+- Metabolomics
+  - HMDB id overview is made
+
+- Transcriptomics
+
+#### Loading packages
+
+Installation dependencies:
+```{r}
+## Install dependencies
+# if (!requireNamespace("BiocManager", quietly = TRUE))
+#     install.packages("BiocManager")
+# BiocManager::install("ComplexHeatmap")
+# 
+# ## Stable version, install countToFPKM from CRAN
+# install.packages("countToFPKM")
+# 
+# ## Lastest version, install countToFPKM from GitHub
+# if(!require(devtools)) install.packages("devtools")
+# devtools::install_github("AAlhendi1707/countToFPKM", build_vignettes = TRUE)
+# if (!require("BiocManager", quietly = TRUE))
+#     install.packages("BiocManager")
+# 
+# BiocManager::install("biomaRt")
+
+```
+
+
+```{r, warning=FALSE,message=FALSE}
+library(readr)
+library(readxl)
+library(countToFPKM)
+library(biomaRt)
+```
+
+## Loading data
+
+Metabs
+```{r, echo=FALSE}
+# Path do data
+day0_path <- "L:\\basic\\divg\\EXIM\\ImmunoHematology\\Cathy Magnée\\Data\\CD3_HDvsCLL\\Metabolomic\\DataForStatistics_day0.csv"
+day2_path <- "L:\\basic\\divg\\EXIM\\ImmunoHematology\\Cathy Magnée\\Data\\CD3_HDvsCLL\\Metabolomic\\DataForStatistics_day2.csv"
+
+# Loading data
+metabs_day0 <- as.data.frame(read_csv(day0_path))
+metabs_day2 <- as.data.frame(read_csv(day2_path))
+
+# Changing first column into rownames. 
+rownames(metabs_day0) <- metabs_day0$IsolabMidas
+rownames(metabs_day2) <- metabs_day2$IsolabMidas
+
+# Remove rownames column and Batch columns. 
+metabs_day0 <- metabs_day0[,-c(1,12,13,14,15,16)]
+metabs_day2 <- metabs_day2[,-c(1,11,12,13,14,15)] # this one only goes to 15 as CLL_01 is excluded.
+
+# Currently, in day0 the column names are Control first, then CLL. In day2 it is visa versa. This is confusing. Let's fix this.
+metabs_day0 <- metabs_day0[,c(6,7,8,9,10,1,2,3,4,5)]
+# Now everything is CLL first, then Controls. 
+
+# And remove CLL_01 of day0, as this one is excluded from RNA data too. 
+metabs_day0 <- metabs_day0[,c(-1)]
+
+# Also remove the day2 Control_03, as we do not have RNA data from this one.
+metabs_day2 <- metabs_day2[,c(-7)]
+
+# removing unnecessary variables / values
+rm(day0_path)
+rm(day2_path)
+```
+
+RNA
+```{r}
+# Path to data
+rawcounts_path <- "L:\\basic\\divg\\EXIM\\ImmunoHematology\\Cathy Magnée\\Data\\CD3_HDvsCLL\\Transcriptomic\\EC024_raw counts.csv"
+
+# Loading data, changing first column into rownames and removing this column.
+RNA_rawcounts <- as.data.frame(read_csv(rawcounts_path))
+rownames(RNA_rawcounts) <- RNA_rawcounts$...1
+RNA_rawcounts <- RNA_rawcounts[,c(-1)]
+
+# Split df into 2: day_0 and day_2.
+# At the same time, the columns are being sorted: CLL first, in the same order as by metabolites
+RNA_day0 <- RNA_rawcounts[,c(9,6,2,5,14,15,16,17,18)]
+RNA_day2 <- RNA_rawcounts[,c(3,8,4,1,10,11,12,13)]
+
+# Remove _T0 and _T48 parts of column names
+for (col in 1:ncol(RNA_day0)){
+  colnames(RNA_day0)[col] <- sub("_T0", "", colnames(RNA_day0)[col])
+}
+for (col in 1:ncol(RNA_day2)){
+  colnames(RNA_day2)[col] <- sub("_T48", "", colnames(RNA_day2)[col])
+}
+rm(col)
+# Change metab df colnames to match the RNA df colnames
+colnames(metabs_day0) <- colnames(RNA_day0)
+colnames(metabs_day2) <- colnames(RNA_day2)
+
+# Removing unnecessary variables
+rm(rawcounts_path)
+
+```
+
+### Metabs - HMDB
+Create file for metabolite matching
+
+```{r}
+# They have this one
+# metabolite_matching <- as.data.frame(read_csv("Factor_COSMOS/support/metabolite_matching.csv"))
+
+# We use this one
+metabolite_matching <- as.data.frame(read_excel("L:/basic/divg/EXIM/ImmunoHematology/Cathy Magnée/Data/CD3_HDvsCLL/Metabolomic/Statistical Data_Incl_HMDB.xlsx"))
+
+metabolite_matching <- metabolite_matching[,c(1,5)]
+
+
+```
+
+For now, two methods for metabolite matching:
+- Keep all
+This means the measurements which can be applicable to multiple metabolites are being used for all possibilities.
+- Keep none
+This means the measurements which can be applicable to multiple metabolites are being used for none of the possibilities. 
+
+```{r}
+# Keep all of the duplicates (meaning the same measurements are being used for multiple metabolites).
+metabolite_matching_all <- metabolite_matching
+
+metabs_day0$Analyte.name <- rownames(metabs_day0)
+metabs_day0_all <- merge(metabolite_matching_all, metabs_day0, by = "Analyte.name")
+metabs_day2$Analyte.name <- rownames(metabs_day2)
+metabs_day2_all <- merge(metabolite_matching_all, metabs_day2, by = "Analyte.name")
+
+
+# Keep none of the duplicates (meaning the measurements of which it is unclear what metabolite is measured, are discarded).
+metabolite_matching_none <- metabolite_matching[!(duplicated(metabolite_matching$Analyte.name) | duplicated(metabolite_matching$Analyte.name, fromLast = T)), ]
+metabs_day0_none <- merge(metabolite_matching_none, metabs_day0, by = "Analyte.name")
+
+metabs_day2_none <- merge(metabolite_matching_none, metabs_day2, by = "Analyte.name")
+
+```
+
+Note that this happens later in the 'classic' COSMOS pipeline.
+
+### RNA - ENSEMBL and FPKM 
+
+Raw count to FPKM using countToFPKM package:
+
+```{r}
+# Setup:
+file.readcounts <- system.file("extdata", "RNA-seq.read.counts.csv", package="countToFPKM")
+
+file.annotations <- system.file("extdata", "Biomart.annotations.hg38.txt", package="countToFPKM")
+file.sample.metrics <- system.file("extdata", "RNA-seq.samples.metrics.txt", package="countToFPKM")
+
+# Import the read count matrix data into R.
+counts <- as.matrix(read.csv(file.readcounts))
+
+# Import feature annotations.
+# Assign feature length into a numeric vector.
+gene.annotations <- read.table(file.annotations, sep="\t", header=TRUE)
+featureLength <- gene.annotations$length
+
+# Import sample metrics.
+# Assign mean fragment length into a numeric vector.
+samples.metrics <- read.table(file.sample.metrics, sep="\t", header=TRUE)
+meanFragmentLength <- samples.metrics$meanFragmentLength
+
+RNA_FPKM <- fpkm(RNA_rawcounts, featureLength, meanFragmentLength)
+
+```
+

@@ -13,6 +13,11 @@ knitr::opts_chunk$set(echo = TRUE)
 
 This R Markdown document is a translation of the Rscript 'metabolomic.R', from Saezlabs Github page Factos_COSMOS, specifically the no_MOFA branch. This page can be found here <https://github.com/saezlab/Factor_COSMOS/tree/no_MOFA/scripts>
 
+Source: Dugourd A, Kuppe C, Sciacovelli M, Gjerga E, Gabor A, Emdal KB, Vieira V, Bekker-Jensen DB, Kranz J, Bindels EMJ, Jesper V Olsen, Christian Frezza, Rafael Kramann, Julio Saez-Rodriguez et al (2021) Causal integration of multi-omics data with prior knowledge to generate mechanistic hypotheses. Mol Syst Biol 17: e9730
+
+<https://doi.org/10.15252/msb.20209730>
+<https://www.embopress.org/doi/full/10.15252/msb.20209730>
+
 
 ### Loading libraries
 
@@ -37,6 +42,8 @@ library(metaboliteIDmapping)
 
 There are two dataset options: WEB_DATA_METABOLON.txt and WEB_DATA_METABOLON_ALL.txt
 The difference is found in the fact that the data comes from triplicate experiments. In the first dataset, the data from the triplicates is averaged. In the second dataset, the individual data from each of the triplicate experiments is present. we are loading the one where the triplicates data is already averaged. 
+Data can be found here
+<https://wiki.nci.nih.gov/display/NCIDTPdata/Molecular+Target+Data>, or here <https://github.com/saezlab/Factor_COSMOS/tree/MOFA_COSMOS_pipeline/data/metabolomic>
 ```{r}
 
 # Metabolomic Data From Metabolon - data averaged from triplicate experiments (from https://wiki.nci.nih.gov/display/NCIDTPdata/Molecular+Target+Data)

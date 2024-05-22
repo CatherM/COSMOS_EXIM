@@ -26,7 +26,7 @@ library(decoupleR)
 Data1: Metabolomics
 ```{r}
 ##Prepare metabolomic inputs
-metabolomic_clean_vsn_common <- as.data.frame(read_csv("Factor_COSMOS/data/metabolomic/metabolomic_clean_vsn_common.csv"))
+metabolomic_clean_vsn_common <- as.data.frame(read_csv("data/metabolomic/metabolomic_clean_vsn_common.csv"))
 metabolite_matching <- as.data.frame(read_csv("Factor_COSMOS/support/metabolite_matching.csv"))
 metabolomic_clean_vsn_common <- merge(metabolite_matching,metabolomic_clean_vsn_common, by = "metabolite")
 metabolomic_clean_vsn_common <- metabolomic_clean_vsn_common[,-1]
@@ -51,7 +51,7 @@ metabs_scaled <- apply(metabs_df_scaled, 2, function(x){
 
 Data2:Transcriptomics
 ```{r}
-RNA_log2_FPKM_cleaned_common <- as.data.frame(read_csv("Factor_COSMOS/data/RNA/RNA_log2_FPKM_cleaned_common.csv"))
+RNA_log2_FPKM_cleaned_common <- as.data.frame(read_csv("data/RNA/RNA_log2_FPKM_cleaned_common.csv"))
 row.names(RNA_log2_FPKM_cleaned_common) <- RNA_log2_FPKM_cleaned_common$gene
 RNA_log2_FPKM_cleaned_common <- RNA_log2_FPKM_cleaned_common[,-1]
 RNA_log2_FPKM_cleaned_common <- RNA_log2_FPKM_cleaned_common[!(rowSums(is.na(RNA_log2_FPKM_cleaned_common)) > 20),]
