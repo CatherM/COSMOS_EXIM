@@ -57,9 +57,13 @@ library(biomaRt)
 
 Metabs
 ```{r, echo=FALSE}
-# Path do data
-day0_path <- "L:\\basic\\divg\\EXIM\\ImmunoHematology\\Cathy Magnée\\Data\\CD3_HDvsCLL\\Metabolomic\\DataForStatistics_day0.csv"
-day2_path <- "L:\\basic\\divg\\EXIM\\ImmunoHematology\\Cathy Magnée\\Data\\CD3_HDvsCLL\\Metabolomic\\DataForStatistics_day2.csv"
+# Path do data: AMC PC
+# day0_path <- "L:\\basic\\divg\\EXIM\\ImmunoHematology\\Cathy Magnée\\Data\\CD3_HDvsCLL\\Metabolomic\\DataForStatistics_day0.csv"
+# day2_path <- "L:\\basic\\divg\\EXIM\\ImmunoHematology\\Cathy Magnée\\Data\\CD3_HDvsCLL\\Metabolomic\\DataForStatistics_day2.csv"
+
+# Path to data laptop
+day0_path <- "ourdata/DataForStatistics_day0.csv"
+day2_path <- "ourdata/DataForStatistics_day2.csv"
 
 # Loading data
 metabs_day0 <- as.data.frame(read_csv(day0_path))
@@ -90,8 +94,11 @@ rm(day2_path)
 
 RNA
 ```{r}
-# Path to data
+# Path to data AMC PC
 rawcounts_path <- "L:\\basic\\divg\\EXIM\\ImmunoHematology\\Cathy Magnée\\Data\\CD3_HDvsCLL\\Transcriptomic\\EC024_raw counts.csv"
+# Path to data my laptop
+rawcounts_path <- "ourdata/EC024_raw counts.csv"
+
 
 # Loading data, changing first column into rownames and removing this column.
 RNA_rawcounts <- as.data.frame(read_csv(rawcounts_path))
@@ -127,8 +134,11 @@ Create file for metabolite matching
 # They have this one
 # metabolite_matching <- as.data.frame(read_csv("Factor_COSMOS/support/metabolite_matching.csv"))
 
-# We use this one
+# We use this one - AMC Path
 metabolite_matching <- as.data.frame(read_excel("L:/basic/divg/EXIM/ImmunoHematology/Cathy Magnée/Data/CD3_HDvsCLL/Metabolomic/Statistical Data_Incl_HMDB.xlsx"))
+# We use this one - AMC Path
+metabolite_matching <- as.data.frame(read_excel("ourdata/Statistical Data_Incl_HMDB.xlsx"))
+
 
 metabolite_matching <- metabolite_matching[,c(1,5)]
 
@@ -164,13 +174,14 @@ Note that this happens later in the 'classic' COSMOS pipeline.
 ### RNA - ENSEMBL and FPKM 
 
 Raw count to FPKM using countToFPKM package:
-
+Standard approach:
 ```{r}
-# Setup:
-file.readcounts <- system.file("extdata", "RNA-seq.read.counts.csv", package="countToFPKM")
+library(countToFPKM)
 
+file.readcounts <- system.file("extdata", "RNA-seq.read.counts.csv", package="countToFPKM")
 file.annotations <- system.file("extdata", "Biomart.annotations.hg38.txt", package="countToFPKM")
 file.sample.metrics <- system.file("extdata", "RNA-seq.samples.metrics.txt", package="countToFPKM")
+
 
 # Import the read count matrix data into R.
 counts <- as.matrix(read.csv(file.readcounts))
@@ -185,7 +196,48 @@ featureLength <- gene.annotations$length
 samples.metrics <- read.table(file.sample.metrics, sep="\t", header=TRUE)
 meanFragmentLength <- samples.metrics$meanFragmentLength
 
-RNA_FPKM <- fpkm(RNA_rawcounts, featureLength, meanFragmentLength)
+# Return FPKM into a numeric matrix.
+fpkm_matrix <- fpkm (counts, featureLength, meanFragmentLength)
+```
+
+
+I need to copy this but with correct gene annotations?
+```{r}
+
+# Import read count matrix data
+counts <- as.matrix(RNA_rawcounts)
+
+#import feature annotations
+# Assign feature length into a numeric vector
+# We do this from biomart
+list <- listEnsembl()
+
+ensembl <- useEnsembl(biomart="genes", dataset = "hsapiens_gene_ensembl")
+gene_data <- getBM(attributes = c("ensembl_gene_id", "start_position", "end_position"),
+                   mart = ensembl)
+featureLength <- as.integer(gene_data$end_position - gene_data$start_position + 1)
+
+
+# Import sample metrics.
+# Assign mean fragment length into a numeric vector.
+samples.metrics <- read.table(file.sample.metrics, sep="\t", header=TRUE)
+meanFragmentLength <- samples.metrics$meanFragmentLength
+
+
+# Return FPKM into a numeric matrix.
+RNA_FPKM <- fpkm(counts, featureLength, meanFragmentLength)
 
 ```
+
+OK, let's come back to this laytur. frfr.
+
+
+ENSEMBL to Gene names
+
+```{r}
+
+# ENSEMBL_names <-
+
+```
+
 
