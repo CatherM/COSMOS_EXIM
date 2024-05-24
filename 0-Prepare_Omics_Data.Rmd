@@ -22,6 +22,9 @@ The following preparations to the data are in this document:
   - HMDB id overview is made
 
 - Transcriptomics
+  - RNA FPKM's are imported
+  - RNA dataset is split into day 1 and day 2
+  - A link is made between ENSEMBL gene ids and gene names
 
 #### Loading packages
 
@@ -51,6 +54,7 @@ library(readr)
 library(readxl)
 library(countToFPKM)
 library(biomaRt)
+library(dplyr)
 ```
 
 ## Loading data
@@ -58,12 +62,12 @@ library(biomaRt)
 Metabs
 ```{r, echo=FALSE}
 # Path do data: AMC PC
-# day0_path <- "L:\\basic\\divg\\EXIM\\ImmunoHematology\\Cathy Magnée\\Data\\CD3_HDvsCLL\\Metabolomic\\DataForStatistics_day0.csv"
-# day2_path <- "L:\\basic\\divg\\EXIM\\ImmunoHematology\\Cathy Magnée\\Data\\CD3_HDvsCLL\\Metabolomic\\DataForStatistics_day2.csv"
+day0_path <- "L:\\basic\\divg\\EXIM\\ImmunoHematology\\Cathy Magnée\\Data\\CD3_HDvsCLL\\Metabolomic\\DataForStatistics_day0.csv"
+day2_path <- "L:\\basic\\divg\\EXIM\\ImmunoHematology\\Cathy Magnée\\Data\\CD3_HDvsCLL\\Metabolomic\\DataForStatistics_day2.csv"
 
 # Path to data laptop
-day0_path <- "ourdata/DataForStatistics_day0.csv"
-day2_path <- "ourdata/DataForStatistics_day2.csv"
+# day0_path <- "ourdata/DataForStatistics_day0.csv"
+# day2_path <- "ourdata/DataForStatistics_day2.csv"
 
 # Loading data
 metabs_day0 <- as.data.frame(read_csv(day0_path))
@@ -97,7 +101,7 @@ RNA
 # Path to data AMC PC
 rawcounts_path <- "L:\\basic\\divg\\EXIM\\ImmunoHematology\\Cathy Magnée\\Data\\CD3_HDvsCLL\\Transcriptomic\\EC024_raw counts.csv"
 # Path to data my laptop
-rawcounts_path <- "ourdata/EC024_raw counts.csv"
+# rawcounts_path <- "ourdata/EC024_raw counts.csv"
 
 
 # Loading data, changing first column into rownames and removing this column.
@@ -204,33 +208,98 @@ fpkm_matrix <- fpkm (counts, featureLength, meanFragmentLength)
 I need to copy this but with correct gene annotations?
 ```{r}
 
-# Import read count matrix data
-counts <- as.matrix(RNA_rawcounts)
-
-#import feature annotations
-# Assign feature length into a numeric vector
-# We do this from biomart
-list <- listEnsembl()
-
-ensembl <- useEnsembl(biomart="genes", dataset = "hsapiens_gene_ensembl")
-gene_data <- getBM(attributes = c("ensembl_gene_id", "start_position", "end_position"),
-                   mart = ensembl)
-featureLength <- as.integer(gene_data$end_position - gene_data$start_position + 1)
-
-
-# Import sample metrics.
-# Assign mean fragment length into a numeric vector.
-samples.metrics <- read.table(file.sample.metrics, sep="\t", header=TRUE)
-meanFragmentLength <- samples.metrics$meanFragmentLength
-
-
-# Return FPKM into a numeric matrix.
-RNA_FPKM <- fpkm(counts, featureLength, meanFragmentLength)
+# # Import read count matrix data
+# counts <- as.matrix(RNA_rawcounts)
+# 
+# #import feature annotations
+# # Assign feature length into a numeric vector
+# # We do this from biomart
+# list <- listEnsembl()
+# 
+# ensembl <- useEnsembl(biomart="genes", dataset = "hsapiens_gene_ensembl")
+# gene_data <- getBM(attributes = c("ensembl_gene_id", "start_position", "end_position"),
+#                    mart = ensembl)
+# featureLength <- as.integer(gene_data$end_position - gene_data$start_position + 1)
+# 
+# 
+# # Import sample metrics.
+# # Assign mean fragment length into a numeric vector.
+# samples.metrics <- read.table(file.sample.metrics, sep="\t", header=TRUE)
+# meanFragmentLength <- samples.metrics$meanFragmentLength
+# 
+# 
+# # Return FPKM into a numeric matrix.
+# RNA_FPKM <- fpkm(counts, featureLength, meanFragmentLength)
 
 ```
 
-OK, let's come back to this laytur. frfr.
 
+Tryout
+
+```{r}
+# Create FPKM df
+RNA_FPKM <- RNA_rawcounts
+RNA_FPKM$gene_id <- rownames(RNA_FPKM)
+
+# Path to files containing FPKM values 
+rsem_count.path <- "L:/basic/divg/EXIM/ImmunoHematology/Elena Camerini/Bioinformatics/EC024_CJ_RNAseq/Raw data from alignment/rsem_count"
+
+# genes.results files
+all_files <- list.files(path = rsem_count.path, pattern = "*.genes.results", full.names = TRUE)
+
+for (col_name in colnames(RNA_rawcounts)) {
+  
+  matching_files <- grep(col_name, all_files, value=T)
+
+  # If there is exactly one matching file, proceed
+  if (length(matching_files) == 1) {
+    file_path <- matching_files[1]
+    
+    # Load the file into a dataframe called temp
+    temp <- read.csv(file_path, sep = "\t")
+    
+    RNA_FPKM <- RNA_FPKM %>%
+      left_join(temp %>% select(gene_id, FPKM), by = "gene_id") %>%
+      mutate(!!col_name := FPKM) %>%
+      select(-FPKM)
+    
+  } else if (length(matching_files) > 1) {
+    warning(paste("Multiple files found for column name:", col_name))
+  } else {
+    warning(paste("No file found for column name:", col_name))
+  }
+}
+
+RNA_FPKM <- tibble::column_to_rownames(RNA_FPKM, "gene_id")
+
+# Remove overbodige (redundant) variables
+rm(col_name)
+rm(temp)
+
+# read_file("L:\\basic\\divg\\EXIM\\ImmunoHematology\\Elena Camerini\\Bioinformatics\\EC024_CJ_RNAseq\\Raw data from alignment\\rsem_count \\rsem_aligned_trimmed_SQ23034888-HD112_T48-HD112_T48_.transcript.bam")
+
+
+
+```
+
+Splitting dataset into day 0 and day 2 like before. 
+
+```{r}
+# Split df into 2: day_0 and day_2.
+# At the same time, the columns are being sorted: CLL first, in the same order as by metabolites
+RNA__FPKM_day0 <- RNA_FPKM[,c(9,6,2,5,14,15,16,17,18)]
+RNA_FPKM_day2 <- RNA_FPKM[,c(3,8,4,1,10,11,12,13)]
+
+# Remove _T0 and _T48 parts of column names
+for (col in 1:ncol(RNA__FPKM_day0)){
+  colnames(RNA__FPKM_day0)[col] <- sub("_T0", "", colnames(RNA__FPKM_day0)[col])
+}
+for (col in 1:ncol(RNA_FPKM_day2)){
+  colnames(RNA_FPKM_day2)[col] <- sub("_T48", "", colnames(RNA_FPKM_day2)[col])
+}
+
+rm(col)
+```
 
 ENSEMBL to Gene names
 
