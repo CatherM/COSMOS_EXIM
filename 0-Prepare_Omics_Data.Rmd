@@ -62,12 +62,12 @@ library(dplyr)
 Metabs
 ```{r, echo=FALSE}
 # Path do data: AMC PC
-day0_path <- "L:\\basic\\divg\\EXIM\\ImmunoHematology\\Cathy Magnée\\Data\\CD3_HDvsCLL\\Metabolomic\\DataForStatistics_day0.csv"
-day2_path <- "L:\\basic\\divg\\EXIM\\ImmunoHematology\\Cathy Magnée\\Data\\CD3_HDvsCLL\\Metabolomic\\DataForStatistics_day2.csv"
+# day0_path <- "L:\\basic\\divg\\EXIM\\ImmunoHematology\\Cathy Magnée\\Data\\CD3_HDvsCLL\\Metabolomic\\DataForStatistics_day0.csv"
+# day2_path <- "L:\\basic\\divg\\EXIM\\ImmunoHematology\\Cathy Magnée\\Data\\CD3_HDvsCLL\\Metabolomic\\DataForStatistics_day2.csv"
 
 # Path to data laptop
-# day0_path <- "ourdata/DataForStatistics_day0.csv"
-# day2_path <- "ourdata/DataForStatistics_day2.csv"
+day0_path <- "ourdata/DataForStatistics_day0.csv"
+day2_path <- "ourdata/DataForStatistics_day2.csv"
 
 # Loading data
 metabs_day0 <- as.data.frame(read_csv(day0_path))
@@ -94,14 +94,17 @@ metabs_day2 <- metabs_day2[,c(-7)]
 # removing unnecessary variables / values
 rm(day0_path)
 rm(day2_path)
+
+
+
 ```
 
 RNA
 ```{r}
 # Path to data AMC PC
-rawcounts_path <- "L:\\basic\\divg\\EXIM\\ImmunoHematology\\Cathy Magnée\\Data\\CD3_HDvsCLL\\Transcriptomic\\EC024_raw counts.csv"
+# rawcounts_path <- "L:\\basic\\divg\\EXIM\\ImmunoHematology\\Cathy Magnée\\Data\\CD3_HDvsCLL\\Transcriptomic\\EC024_raw counts.csv"
 # Path to data my laptop
-# rawcounts_path <- "ourdata/EC024_raw counts.csv"
+rawcounts_path <- "ourdata/EC024_raw counts.csv"
 
 
 # Loading data, changing first column into rownames and removing this column.
@@ -115,21 +118,49 @@ RNA_day0 <- RNA_rawcounts[,c(9,6,2,5,14,15,16,17,18)]
 RNA_day2 <- RNA_rawcounts[,c(3,8,4,1,10,11,12,13)]
 
 # Remove _T0 and _T48 parts of column names
-for (col in 1:ncol(RNA_day0)){
-  colnames(RNA_day0)[col] <- sub("_T0", "", colnames(RNA_day0)[col])
-}
-for (col in 1:ncol(RNA_day2)){
-  colnames(RNA_day2)[col] <- sub("_T48", "", colnames(RNA_day2)[col])
-}
-rm(col)
-# Change metab df colnames to match the RNA df colnames
-colnames(metabs_day0) <- colnames(RNA_day0)
-colnames(metabs_day2) <- colnames(RNA_day2)
+# for (col in 1:ncol(RNA_day0)){
+#   colnames(RNA_day0)[col] <- sub("_T0", "", colnames(RNA_day0)[col])
+# }
+# for (col in 1:ncol(RNA_day2)){
+#   colnames(RNA_day2)[col] <- sub("_T48", "", colnames(RNA_day2)[col])
+# }
+# rm(col)
 
 # Removing unnecessary variables
 rm(rawcounts_path)
 
 ```
+
+Metabolites again
+```{r}
+# Making a full metabolites dataframe
+
+# Change metab df colnames to match the RNA df colnames
+colnames(metabs_day0) <- colnames(RNA_day0)
+colnames(metabs_day2) <- colnames(RNA_day2)
+
+# Change colnames to include the day data, day 0 as _T0 and day 2 as _T48
+# colnames(metabs_day0) <- paste0(colnames(metabs_day0), "_T0")
+# colnames(metabs_day2) <- paste0(colnames(metabs_day2), "_T48")
+
+# Add metabolite data back in, so they can be joined by...
+metabs_day0$metabolites <- rownames(metabs_day0)
+metabs_day2$metabolites <- rownames(metabs_day2)
+
+# Create a file with all metab data
+metabs <- as.data.frame(full_join(metabs_day0, metabs_day2, by = "metabolites"))
+rownames(metabs) <- metabs$metabolites
+
+# Rm col names metabolites
+metabs_day0 <- subset(metabs_day0, select=-metabolites)
+metabs_day2 <- subset(metabs_day2, select=-metabolites)
+metabs <- subset(metabs, select=-metabolites)
+
+# Change NA to 0, bc NA means undetected which means 0 for now? Might remove this later tho x
+metabs[is.na(metabs)] <- 0
+
+```
+
 
 ### Metabs - HMDB
 Create file for metabolite matching
@@ -205,36 +236,7 @@ fpkm_matrix <- fpkm (counts, featureLength, meanFragmentLength)
 ```
 
 
-I need to copy this but with correct gene annotations?
-```{r}
-
-# # Import read count matrix data
-# counts <- as.matrix(RNA_rawcounts)
-# 
-# #import feature annotations
-# # Assign feature length into a numeric vector
-# # We do this from biomart
-# list <- listEnsembl()
-# 
-# ensembl <- useEnsembl(biomart="genes", dataset = "hsapiens_gene_ensembl")
-# gene_data <- getBM(attributes = c("ensembl_gene_id", "start_position", "end_position"),
-#                    mart = ensembl)
-# featureLength <- as.integer(gene_data$end_position - gene_data$start_position + 1)
-# 
-# 
-# # Import sample metrics.
-# # Assign mean fragment length into a numeric vector.
-# samples.metrics <- read.table(file.sample.metrics, sep="\t", header=TRUE)
-# meanFragmentLength <- samples.metrics$meanFragmentLength
-# 
-# 
-# # Return FPKM into a numeric matrix.
-# RNA_FPKM <- fpkm(counts, featureLength, meanFragmentLength)
-
-```
-
-
-Tryout
+Tryout: Using Elena's FPKM data. Thank you Elena, very cool. 
 
 ```{r}
 # Create FPKM df
@@ -290,22 +292,31 @@ Splitting dataset into day 0 and day 2 like before.
 RNA__FPKM_day0 <- RNA_FPKM[,c(9,6,2,5,14,15,16,17,18)]
 RNA_FPKM_day2 <- RNA_FPKM[,c(3,8,4,1,10,11,12,13)]
 
-# Remove _T0 and _T48 parts of column names
-for (col in 1:ncol(RNA__FPKM_day0)){
-  colnames(RNA__FPKM_day0)[col] <- sub("_T0", "", colnames(RNA__FPKM_day0)[col])
-}
-for (col in 1:ncol(RNA_FPKM_day2)){
-  colnames(RNA_FPKM_day2)[col] <- sub("_T48", "", colnames(RNA_FPKM_day2)[col])
-}
+# # Remove _T0 and _T48 parts of column names # Commented this out bc idm the T0 and T48 anymore. 
+# for (col in 1:ncol(RNA__FPKM_day0)){
+#   colnames(RNA__FPKM_day0)[col] <- sub("_T0", "", colnames(RNA__FPKM_day0)[col])
+# }
+# for (col in 1:ncol(RNA_FPKM_day2)){
+#   colnames(RNA_FPKM_day2)[col] <- sub("_T48", "", colnames(RNA_FPKM_day2)[col])
+# }
 
-rm(col)
+# rm(col)
 ```
 
 ENSEMBL to Gene names
 
 ```{r}
+# AMC PC
 
-# ENSEMBL_names <-
+# laptop
+ENSEMBL_path <- "ourdata/Ensembl_annotation.csv"
+
+# Loading data, changing first column into rownames and removing this column.
+ENSEMBL_names <- as.data.frame(read_csv(ENSEMBL_path))
+
+
+rm(ENSEMBL_path)
+
 
 ```
 
