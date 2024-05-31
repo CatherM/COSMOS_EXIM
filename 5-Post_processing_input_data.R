@@ -20,19 +20,19 @@ intersect(names(cosmos_inputs$`RPMI-8226`$TF_scores), SIF_full$Node2)
 # Change this to any of the above 4-6 
 
 
-xy <- intersect(names(cosmos_inputs$`RPMI-8226`$TF_scores), SIF_full$Node2)
+xy <- intersect(names(cosmos_inputs$`RPMI-8226`$TF), SIF_full$Node1)
 
 
-# Dont forget to change data type here (TF_scores or RNA)
+# Dont forget to change data type here (TF_scores, metab or RNA)
 for (node in xy){
-  print(paste0(node,": " ,cosmos_inputs$`RPMI-8226`$TF_scores[[node]]))
+  print(paste0(node,": " ,cosmos_inputs$`RPMI-8226`$TF[[node]]))
 }
 
 
 ### Extra try to change metabs to their non-hmdb names
 metabolite_matching <- as.data.frame(read_csv("Factor_COSMOS/support/metabolite_matching.csv"))
 
-
+library(stringdist)
 # Function to process nodes and return corresponding HMDB IDs
 get_hmdb_ids <- function(SIF_full, metabolite_matching) {
   # Combine Node1 and Node2 into one vector
@@ -55,8 +55,16 @@ get_hmdb_ids <- function(SIF_full, metabolite_matching) {
 }
 
 hmdb_ids <- get_hmdb_ids(SIF_full, metabolite_matching)
-print(hmdb_ids)
+hmdb_ids <- na.omit(hmdb_ids)
+
 # subset(SIF_full$Node1, grepl("Metabs_"))
 # for (node in SIF_full$Node1){
 #   if node contains()
 # }
+library(dplyr)
+hmdb_to_metabolite <- setNames(metabolite_matching$metabolite, metabolite_matching$hmdb)
+
+for (found_metab in hmdb_ids){
+  metab_name <- hmdb_to_metabolite[[found_metab]]
+  print(paste(metab_name, cosmos_inputs$`RPMI-8226`$metabolomic[[found_metab]], sep = ": "))
+}
