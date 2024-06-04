@@ -21,7 +21,7 @@ Source: Dugourd A, Kuppe C, Sciacovelli M, Gjerga E, Gabor A, Emdal KB, Vieira V
 
 ### Loading libraries
 
-```{r}
+```{r, warning=FALSE}
 library(readr)
 library(reshape2)
 library(pheatmap)
@@ -55,6 +55,16 @@ metabs <- as.data.frame(read_csv("data/metabolomic/WEB_DATA_METABOLON.TXT")) # O
 
 # metabs <- as.data.frame(read_csv("data/metabolomic/WEB_DATA_METABOLON_ALL.TXT")) # Added _ALL
 
+  
+  
+
+### Our data 
+
+# metabs_df <-  as.data.frame(read_csv("L:\\basic\\divg\\EXIM\\ImmunoHematology\\Cathy Magnée\\Data\\CD3_HDvsCLL\\Metabolomic\\day2_metabs_raw.csv"))
+metabs_df <-  as.data.frame(read_csv("L:\\basic\\divg\\EXIM\\ImmunoHematology\\Cathy Magnée\\Data\\CD3_HDvsCLL\\Metabolomic\\all_metabs_raw.csv"))
+
+rownames(metabs_df) <- metabs_df$...1
+metabs_df <- metabs_df[,-1]
 ```
 
 ### Filtering steps
@@ -92,6 +102,8 @@ metabs_df <- metabs_df[,-1]
 ## Plotting the distribution of metabolite values
 Histogram to inspect distributions 
 ```{r pressure, echo=FALSE}
+
+
 # Inspect distribution of values
 hist(as.numeric(unlist(log2(metabs_df))), breaks = 1000) #Things looks like they are getting funky around 5
 
@@ -101,7 +113,15 @@ hist(as.numeric(unlist(log2(metabs_df))), breaks = 1000) #Things looks like they
 ```
 Heatmap:
 ```{r}
-pheatmap(log2(metabs_df), show_colnames = F, show_rownames = F) 
+no_zero_metabs_df <- metabs_df
+
+no_zero_metabs_df[no_zero_metabs_df==0]=NA
+
+pheatmap(log2(as.matrix(na.omit(no_zero_metabs_df))), show_colnames = T, show_rownames = F) 
+
+
+# log <- as.numeric(as.matrix(log2(metabs_df)))
+pheatmap(log2(as.matrix(na.omit(metabs_df))), show_colnames = T, show_rownames = F) 
 
 ```
 
@@ -121,7 +141,7 @@ metabs_df[abs(log2(metabs_df)) > 5] <- NA
 ### Variance Stabilizing Normalization
 the vsnMatrix method is used to stabilize variance across the data. 
 The plot shows the relationship between the standard deviation and the mean of the data after VSN normalization
-The last step applies the VSN normalization transformation learned from fit to the meta_df data. In short: OG data is replaced with the normalized data
+The last step applies the VSN normalization transformation learned from fit to the meta_df data. In short: OG data is replaced with the normalized data.
 ```{r}
 fit <- vsnMatrix(as.matrix(metabs_df))
 meanSdPlot(fit)

@@ -33,6 +33,7 @@ from Github:
 Libraries:
 
 ```{r}
+start.time <- Sys.time()
 library(cosmosR)
 library(readr)
 library(dplyr)
@@ -51,8 +52,10 @@ data("meta_network")
 meta_network <- meta_network_cleanup(meta_network)
 
 # load("Factor_COSMOS/data/cosmos/cosmos_inputs.RData")
-# load("data/cosmos/native/cosmos_inputs.RData")
+cosmos_input <- load("data/cosmos/native/cosmos_inputs.RData")
+cosmos_input <- cosmos_inputs
 load("Factor_COSMOS/data/cosmos/cosmos_inputs.RData")
+
 
 ```
 
@@ -68,6 +71,9 @@ names(cosmos_inputs)
 
 cell_line <-  "RPMI-8226" # Select cell line you want to analyze with cosmos HERE
 
+max_depth <- 5
+
+cosmos_inputs[[cell_line]]$RNA <- cosmos_input[[cell_line]]$RNA
 
 sig_input <- cosmos_inputs[[cell_line]]$TF_scores
 metab_input <- cosmos_inputs[[cell_line]]$metabolomic
@@ -108,9 +114,17 @@ my_options <- default_CARNIVAL_options(solver = "cplex")
 #Here the user should provide a path to its CPLEX executable (only cplex at the moment, other solvers will be documented soon !)
 # my_options$solverPath <- "~/Documents/cplex" #or cbc solver executable
 my_options$solverPath <- "C:/Program Files/IBM/ILOG/CPLEX_Studio2211/cplex/bin/x64_win64"
-my_options$workdir <- file.path(getwd(), "cplex")
-my_options$outputFolder <- file.path(getwd(), "cplex")
-# my_options$solverPath <- "cbc/cbc-osx/cbc" #or cbc solver executable
+
+# Change this for your folder. This worked for me, the other options (commented out below) dit not.
+my_options$workdir <- "C:/Users/cmagnee/Documents/cplex"
+my_options$outputFolder <- "C:/Users/cmagnee/Documents/cplex"
+
+# my_options$workdir <- "H:/COSMOS_EXIM/cplex"
+# my_options$outputFolder <- "H:/COSMOS_EXIM/cplex"
+
+# my_options$workdir <- file.path(getwd(), "cplex")
+# my_options$outputFolder <- file.path(getwd(), "cplex")
+
 my_options$solver <- "cplex" #or cbc
 # my_options$solver <- "cbc"
 my_options$timelimit <- 3600/10
@@ -142,7 +156,7 @@ test_for <- preprocess_COSMOS_signaling_to_metabolism(meta_network = meta_networ
                                                       signaling_data = sig_input,
                                                       metabolic_data = metab_input,
                                                       diff_expression_data = RNA_input,
-                                                      maximum_network_depth = 5,
+                                                      maximum_network_depth = max_depth+1,
                                                       remove_unexpressed_nodes = T,
                                                       filter_tf_gene_interaction_by_optimization = T,
                                                       CARNIVAL_options = my_options)
@@ -189,7 +203,7 @@ test_back <- preprocess_COSMOS_metabolism_to_signaling(meta_network = meta_netwo
                                                       signaling_data = sig_input,
                                                       metabolic_data = metab_input,
                                                       diff_expression_data = RNA_input,
-                                                      maximum_network_depth = 6,
+                                                      maximum_network_depth = max_depth,
                                                       remove_unexpressed_nodes = TRUE,
                                                       filter_tf_gene_interaction_by_optimization = TRUE,
                                                       CARNIVAL_options = my_options)
@@ -251,7 +265,10 @@ ATT_full$NodeType <- ifelse(ATT_full$Nodes %in% C_nodes,"C",ifelse(ATT_full$Node
 
 ```{r}
 
-write_csv(SIF_full, file = paste("results/",paste(cell_line, "_SIF_full.csv",sep = ""), sep = ""))
-write_csv(ATT_full, file = paste("results/",paste(cell_line, "_ATT_full.csv",sep = ""), sep = ""))
+write_csv(SIF_full, file = paste("results/d", paste(max_depth, paste(cell_line, "_SIF_full.csv", sep = ""), sep = ""), sep = ""))
+write_csv(ATT_full, file = paste("results/d", paste(max_depth, paste(cell_line, "_ATT_full.csv",sep = ""), sep = ""), sep = ""))
+end.time <- Sys.time()
+time.taken <- round(end.time - start.time, 2)
+time.taken
 
 ```

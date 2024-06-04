@@ -52,7 +52,6 @@ Installation dependencies:
 ```{r, warning=FALSE,message=FALSE}
 library(readr)
 library(readxl)
-library(countToFPKM)
 library(biomaRt)
 library(dplyr)
 ```
@@ -62,12 +61,12 @@ library(dplyr)
 Metabs
 ```{r, echo=FALSE}
 # Path do data: AMC PC
-# day0_path <- "L:\\basic\\divg\\EXIM\\ImmunoHematology\\Cathy Magnée\\Data\\CD3_HDvsCLL\\Metabolomic\\DataForStatistics_day0.csv"
-# day2_path <- "L:\\basic\\divg\\EXIM\\ImmunoHematology\\Cathy Magnée\\Data\\CD3_HDvsCLL\\Metabolomic\\DataForStatistics_day2.csv"
+day0_path <- "L:\\basic\\divg\\EXIM\\ImmunoHematology\\Cathy Magnée\\Data\\CD3_HDvsCLL\\Metabolomic\\DataForStatistics_day0.csv"
+day2_path <- "L:\\basic\\divg\\EXIM\\ImmunoHematology\\Cathy Magnée\\Data\\CD3_HDvsCLL\\Metabolomic\\DataForStatistics_day2.csv"
 
 # Path to data laptop
-day0_path <- "ourdata/DataForStatistics_day0.csv"
-day2_path <- "ourdata/DataForStatistics_day2.csv"
+# day0_path <- "ourdata/DataForStatistics_day0.csv"
+# day2_path <- "ourdata/DataForStatistics_day2.csv"
 
 # Loading data
 metabs_day0 <- as.data.frame(read_csv(day0_path))
@@ -102,9 +101,10 @@ rm(day2_path)
 RNA
 ```{r}
 # Path to data AMC PC
-# rawcounts_path <- "L:\\basic\\divg\\EXIM\\ImmunoHematology\\Cathy Magnée\\Data\\CD3_HDvsCLL\\Transcriptomic\\EC024_raw counts.csv"
+rawcounts_path <- "L:\\basic\\divg\\EXIM\\ImmunoHematology\\Cathy Magnée\\Data\\CD3_HDvsCLL\\Transcriptomic\\EC024_raw counts.csv"
+
 # Path to data my laptop
-rawcounts_path <- "ourdata/EC024_raw counts.csv"
+# rawcounts_path <- "ourdata/EC024_raw counts.csv"
 
 
 # Loading data, changing first column into rownames and removing this column.
@@ -128,6 +128,14 @@ RNA_day2 <- RNA_rawcounts[,c(3,8,4,1,10,11,12,13)]
 
 # Removing unnecessary variables
 rm(rawcounts_path)
+RNA <- RNA_rawcounts[,c(9,6,2,5,14,15,16,17,18,3,8,4,1,10,11,12,13)]
+
+write.csv(RNA,file = "L:\\basic\\divg\\EXIM\\ImmunoHematology\\Cathy Magnée\\Data\\CD3_HDvsCLL\\Transcriptomic\\all_RNA_raw.csv")
+
+write.csv(RNA_day0,file = "L:\\basic\\divg\\EXIM\\ImmunoHematology\\Cathy Magnée\\Data\\CD3_HDvsCLL\\Transcriptomic\\day0_RNA_raw.csv")
+
+write.csv(RNA_day2,file = "L:\\basic\\divg\\EXIM\\ImmunoHematology\\Cathy Magnée\\Data\\CD3_HDvsCLL\\Transcriptomic\\day2_RNA_raw.csv")
+
 
 ```
 
@@ -158,6 +166,13 @@ metabs <- subset(metabs, select=-metabolites)
 
 # Change NA to 0, bc NA means undetected which means 0 for now? Might remove this later tho x
 metabs[is.na(metabs)] <- 0
+
+
+write.csv(metabs,file = "L:\\basic\\divg\\EXIM\\ImmunoHematology\\Cathy Magnée\\Data\\CD3_HDvsCLL\\Metabolomic\\all_metabs_raw.csv")
+
+write.csv(metabs_day0,file = "L:\\basic\\divg\\EXIM\\ImmunoHematology\\Cathy Magnée\\Data\\CD3_HDvsCLL\\Metabolomic\\day0_metabs_raw.csv")
+
+write.csv(metabs_day2,file = "L:\\basic\\divg\\EXIM\\ImmunoHematology\\Cathy Magnée\\Data\\CD3_HDvsCLL\\Metabolomic\\day2_metabs_raw.csv")
 
 ```
 
@@ -208,39 +223,11 @@ Note that this happens later in the 'classic' COSMOS pipeline.
 
 ### RNA - ENSEMBL and FPKM 
 
-Raw count to FPKM using countToFPKM package:
-Standard approach:
-```{r}
-library(countToFPKM)
-
-file.readcounts <- system.file("extdata", "RNA-seq.read.counts.csv", package="countToFPKM")
-file.annotations <- system.file("extdata", "Biomart.annotations.hg38.txt", package="countToFPKM")
-file.sample.metrics <- system.file("extdata", "RNA-seq.samples.metrics.txt", package="countToFPKM")
-
-
-# Import the read count matrix data into R.
-counts <- as.matrix(read.csv(file.readcounts))
-
-# Import feature annotations.
-# Assign feature length into a numeric vector.
-gene.annotations <- read.table(file.annotations, sep="\t", header=TRUE)
-featureLength <- gene.annotations$length
-
-# Import sample metrics.
-# Assign mean fragment length into a numeric vector.
-samples.metrics <- read.table(file.sample.metrics, sep="\t", header=TRUE)
-meanFragmentLength <- samples.metrics$meanFragmentLength
-
-# Return FPKM into a numeric matrix.
-fpkm_matrix <- fpkm (counts, featureLength, meanFragmentLength)
-```
-
-
 Tryout: Using Elena's FPKM data. Thank you Elena, very cool. 
 
 ```{r}
 # Create FPKM df
-RNA_FPKM <- RNA_rawcounts
+RNA_FPKM <- RNA
 RNA_FPKM$gene_id <- rownames(RNA_FPKM)
 
 # Path to files containing FPKM values 
@@ -278,46 +265,106 @@ RNA_FPKM <- tibble::column_to_rownames(RNA_FPKM, "gene_id")
 rm(col_name)
 rm(temp)
 
-# read_file("L:\\basic\\divg\\EXIM\\ImmunoHematology\\Elena Camerini\\Bioinformatics\\EC024_CJ_RNAseq\\Raw data from alignment\\rsem_count \\rsem_aligned_trimmed_SQ23034888-HD112_T48-HD112_T48_.transcript.bam")
+# read_file("L:\\basic\\divg\\EXIM\\ImmunoHematology\\Elena Camerini\\Bioinformatics\\EC024_CJ_RNAseq\\
+# Raw data from alignment\\rsem_count \\rsem_aligned_trimmed_SQ23034888-HD112_T48-HD112_T48_.transcript.bam")
 
+RNA_FPKM_day0 <- RNA_FPKM[,c(1:9)]
+RNA_FPKM_day2 <- RNA_FPKM[,c(10:18)]
 
+write.csv(RNA_FPKM,file = "L:\\basic\\divg\\EXIM\\ImmunoHematology\\Cathy Magnée\\Data\\CD3_HDvsCLL\\Transcriptomic\\all_RNA_FPKM.csv")
+
+write.csv(RNA_FPKM_day0,file = "L:\\basic\\divg\\EXIM\\ImmunoHematology\\Cathy Magnée\\Data\\CD3_HDvsCLL\\Transcriptomic\\day0_RNA_FPKM.csv")
+
+write.csv(RNA_FPKM_day2,file = "L:\\basic\\divg\\EXIM\\ImmunoHematology\\Cathy Magnée\\Data\\CD3_HDvsCLL\\Transcriptomic\\day2_RNA_FPKM.csv")
 
 ```
 
-Splitting dataset into day 0 and day 2 like before. 
+Using log2 to transform data into the input data typically used at the start of the COSMOS pipeline
 
 ```{r}
-# Split df into 2: day_0 and day_2.
-# At the same time, the columns are being sorted: CLL first, in the same order as by metabolites
-RNA__FPKM_day0 <- RNA_FPKM[,c(9,6,2,5,14,15,16,17,18)]
-RNA_FPKM_day2 <- RNA_FPKM[,c(3,8,4,1,10,11,12,13)]
+# Use function
+RNA_log2_FPKM <- log2(RNA_FPKM)
 
-# # Remove _T0 and _T48 parts of column names # Commented this out bc idm the T0 and T48 anymore. 
-# for (col in 1:ncol(RNA__FPKM_day0)){
-#   colnames(RNA__FPKM_day0)[col] <- sub("_T0", "", colnames(RNA__FPKM_day0)[col])
-# }
-# for (col in 1:ncol(RNA_FPKM_day2)){
-#   colnames(RNA_FPKM_day2)[col] <- sub("_T48", "", colnames(RNA_FPKM_day2)[col])
-# }
+# Change previous 0 (which turns to -Inf) back into 0
+RNA_log2_FPKM[RNA_log2_FPKM==-Inf]=0
 
-# rm(col)
+RNA_log2_FPKM_day0 <- RNA_log2_FPKM[,c(1:9)]
+RNA_log2_FPKM_day2 <- RNA_log2_FPKM[,c(10:18)]
+
+write.csv(RNA_log2_FPKM,file = "L:\\basic\\divg\\EXIM\\ImmunoHematology\\Cathy Magnée\\Data\\CD3_HDvsCLL\\Transcriptomic\\all_RNA_log2_FPKM.csv")
+
+write.csv(RNA_log2_FPKM_day0,file = "L:\\basic\\divg\\EXIM\\ImmunoHematology\\Cathy Magnée\\Data\\CD3_HDvsCLL\\Transcriptomic\\day0_RNA_log2_FPKM.csv")
+
+write.csv(RNA_log2_FPKM_day2,file = "L:\\basic\\divg\\EXIM\\ImmunoHematology\\Cathy Magnée\\Data\\CD3_HDvsCLL\\Transcriptomic\\day2_RNA_log2_FPKM.csv")
+
+
 ```
 
 ENSEMBL to Gene names
 
 ```{r}
 # AMC PC
+ENSEMBL_path <- "data/Transcriptomic/Ensembl_annotation.csv"
 
 # laptop
-ENSEMBL_path <- "ourdata/Ensembl_annotation.csv"
+# ENSEMBL_path <- "ourdata/Ensembl_annotation.csv"
+
+# not needed:
+# test <- readDNAStringSet("L:/basic/divg/EXIM/ImmunoHematology/Elena Camerini/Bioinformatics/EC024_CJ_RNAseq/Raw data from alignment/ref_genome/human_ensembl.n2g.idx.fa")
+# subseq(test, start=c(1, 2, 3), end=c(3, 6, 5))
+# seq_name = names(test)
+# sequence = paste(test)
+# df <- data.frame(seq_name, sequence)
+
+
 
 # Loading data, changing first column into rownames and removing this column.
 ENSEMBL_names <- as.data.frame(read_csv(ENSEMBL_path))
-
+ENSEMBL_names <- ENSEMBL_names[,c(-1,-4)]
 
 rm(ENSEMBL_path)
 
+RNA_log2_FPKM$GENE_ID <- rownames(RNA_log2_FPKM)
+
+
+test <- left_join(RNA_log2_FPKM, ENSEMBL_names, by = "GENE_ID")
+
+non_unique_genes <- test$GENE[duplicated(test$GENE) | duplicated(test$GENE, fromLast = TRUE)]
+unique(non_unique_genes)
+
+# rownames(test) <- test$GENE
 
 ```
 
+```{r}
+##get biomart lists
+list <- listEnsembl()
+ensembl <- useEnsembl(biomart="genes", dataset = "hsapiens_gene_ensembl")
+ensembl
+
+filters <- listFilters(ensembl)
+head(filters)
+
+attributes <- listAttributes(ensembl)
+head(attributes)
+
+symbols <- getBM(attributes=c('hgnc_symbol', 'ensembl_gene_id', 'uniprot_gn_id'), 
+                 filters = 'ensembl_gene_id', 
+                 values = RNA_log2_FPKM$GENE_ID, mart = ensembl)
+
+colnames(symbols) <- c("Gene_name", "GENE_ID", "Uniprot_ID") 
+
+ENSEMBL_names2 <- symbols[,-3]
+
+test <- left_join(RNA_log2_FPKM, ENSEMBL_names2, by = "GENE_ID")
+test <- unique(test)
+
+
+
+# rownames(test) <- test$Gene_name
+
+non_unique_genes <- test$Gene_name[duplicated(test$Gene_name) | duplicated(test$Gene_name, fromLast = TRUE)]
+unique(non_unique_genes)
+
+```
 

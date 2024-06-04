@@ -44,6 +44,16 @@ Loading data:
 # Fragments per kilobase per million reads log2(FPKM + 1) --> RNAseq, composite expression from https://discover.nci.nih.gov/cellminer/datasets.do (https://discover.nci.nih.gov/cellminer/loadDownload.do)
 
 RNA_log2_FPKM <- as.data.frame(read_excel("data/RNA/RNA__RNA_seq_composite_expression.xls", skip = 10, sheet = 1))
+
+RNA_log2_FPKM <- as.data.frame(read_csv("L:\\basic\\divg\\EXIM\\ImmunoHematology\\Cathy Magnée\\Data\\CD3_HDvsCLL\\Transcriptomic\\day2_RNA_FPKM.csv"))
+
+rownames(RNA_log2_FPKM) <- RNA_log2_FPKM$...1
+RNA_log2_FPKM <- RNA_log2_FPKM[,-1]
+RNA_log2_FPKM <- log2(RNA_log2_FPKM)
+
+test <- RNA_log2_FPKM
+test[test==-Inf]=0
+
 ```
 
 #### Reformatting
