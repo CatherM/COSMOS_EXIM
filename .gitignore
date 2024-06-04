@@ -1,3 +1,14 @@
+# Cplex and other log files
+cplex/
+omnipathr-log/
+
+# Factor_COSMOS files
+Factor_COSMOS/
+
+# results and files
+results/
+data/
+
 # History files
 .Rhistory
 .Rapp.history
