@@ -2,8 +2,9 @@
 cplex/
 omnipathr-log/
 
-# Factor_COSMOS files
+# Factor_COSMOS files and other script files
 Factor_COSMOS/
+Fleur_Scripts/
 
 # results and files
 results/
