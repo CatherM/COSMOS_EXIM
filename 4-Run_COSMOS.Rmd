@@ -71,7 +71,8 @@ names(cosmos_inputs)
 
 cell_line <-  "RPMI-8226" # Select cell line you want to analyze with cosmos HERE
 
-max_depth <- 5
+max_depth <- 8
+seconds_per_step <- 72600
 
 cosmos_inputs[[cell_line]]$RNA <- cosmos_input[[cell_line]]$RNA
 
@@ -127,9 +128,13 @@ my_options$outputFolder <- "C:/Users/cmagnee/Documents/cplex"
 
 my_options$solver <- "cplex" #or cbc
 # my_options$solver <- "cbc"
-my_options$timelimit <- 3600/10
+my_options$timelimit <- seconds_per_step
 my_options$mipGAP <- 0.05
-my_options$threads <- 6
+# amc computer
+my_options$threads <- 18
+
+# laptop
+# my_options$threads <- 6
 ```
 
 Note: You need IBM Cplex for this, your location may be different from
@@ -149,6 +154,10 @@ List of for which cell lines this is the case:
 1. none of them oops
 2. 
 
+List for which patient / donor this is the case:
+1.  ? TBA. Spannend
+
+
 
 ```{r}
 # meta_network <- meta_network[,c(1,3,2)]
@@ -160,6 +169,7 @@ test_for <- preprocess_COSMOS_signaling_to_metabolism(meta_network = meta_networ
                                                       remove_unexpressed_nodes = T,
                                                       filter_tf_gene_interaction_by_optimization = T,
                                                       CARNIVAL_options = my_options)
+
 ```
 
 
@@ -171,7 +181,7 @@ checkPerturbations error: Increase maximum_network_depth.
 ### Running signallling to metabolism
 
 ```{r}
-my_options$timelimit <- 3600/10
+my_options$timelimit <- seconds_per_step
 
 test_result_for <- run_COSMOS_signaling_to_metabolism(data = test_for,
                                                       CARNIVAL_options = my_options)
@@ -197,7 +207,7 @@ write_csv(ATT, file = paste("results/",paste(cell_line, "_ATT.csv",sep = ""), se
 ### Preprocessing metabolism to signalling
 
 ```{r}
-my_options$timelimit <- 3600/10
+my_options$timelimit <- seconds_per_step
 
 test_back <- preprocess_COSMOS_metabolism_to_signaling(meta_network = meta_network[,c(1,3,2)],
                                                       signaling_data = sig_input,
@@ -214,7 +224,7 @@ If error: CheckPerbutations, check if it does work with higher maximum_network_d
 ### Running metabolism to signalling
 
 ```{r}
-my_options$timelimit <- 3600/10
+my_options$timelimit <- seconds_per_step
 
 test_result_back <- run_COSMOS_metabolism_to_signaling(data = test_back,
                                                       CARNIVAL_options = my_options)
