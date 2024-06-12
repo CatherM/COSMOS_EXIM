@@ -43,7 +43,7 @@ Loading data:
 ```{r}
 # Fragments per kilobase per million reads log2(FPKM + 1) --> RNAseq, composite expression from https://discover.nci.nih.gov/cellminer/datasets.do (https://discover.nci.nih.gov/cellminer/loadDownload.do)
 
-RNA_log2_FPKM <- as.data.frame(read_excel("data/RNA/RNA__RNA_seq_composite_expression.xls", skip = 10, sheet = 1))
+RNA_log2_FPKM <- as.data.frame(read_excel("../data/RNA/RNA__RNA_seq_composite_expression.xls", skip = 10, sheet = 1))
 
 RNA_log2_FPKM <- as.data.frame(read_csv("L:\\basic\\divg\\EXIM\\ImmunoHematology\\Cathy Magnée\\Data\\CD3_HDvsCLL\\Transcriptomic\\day2_RNA_FPKM.csv"))
 
@@ -102,7 +102,7 @@ We do not have to do this, as we have CLL patients and HDs, not cell lines.
 
 ```{r}
 
-metabolomic_clean_vsn <- as.data.frame(read_csv("data/metabolomic/metabolomic_clean_vsn.csv"))
+metabolomic_clean_vsn <- as.data.frame(read_csv("../data/metabolomic/metabolomic_clean_vsn.csv"))
 
 # Merge them based only on the columns (cell lines) that are in both
 
@@ -117,6 +117,6 @@ RNA_log2_FPKM$gene <- row.names(RNA_log2_FPKM)
 
 RNA_log2_FPKM <- RNA_log2_FPKM[,c(59,1:58)]
 
-write_csv(RNA_log2_FPKM,file = "data/RNA/RNA_log2_FPKM_cleaned_common.csv")
-write_csv(metabolomic_clean_vsn, file = "data/metabolomic/metabolomic_clean_vsn_common.csv")
+write_csv(RNA_log2_FPKM,file = "../data/RNA/RNA_log2_FPKM_cleaned_common.csv")
+write_csv(metabolomic_clean_vsn, file = "../data/metabolomic/metabolomic_clean_vsn_common.csv")
 ```

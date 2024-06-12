@@ -47,13 +47,13 @@ Data can be found here
 ```{r}
 
 # Metabolomic Data From Metabolon - data averaged from triplicate experiments (from https://wiki.nci.nih.gov/display/NCIDTPdata/Molecular+Target+Data)
-# metabs <- as.data.frame(read_csv("data/metabolomic/WEB_DATA_METABOLON.TXT"))
+# metabs <- as.data.frame(read_csv("../data/metabolomic/WEB_DATA_METABOLON.TXT"))
 
 # Metabolomic Data From Metabolon - individual data from each of the triplicate experiments (from https://wiki.nci.nih.gov/display/NCIDTPdata/Molecular+Target+Data)
 
-metabs <- as.data.frame(read_csv("data/metabolomic/WEB_DATA_METABOLON.TXT")) # Original file
+metabs <- as.data.frame(read_csv("../data/metabolomic/WEB_DATA_METABOLON.TXT")) # Original file
 
-# metabs <- as.data.frame(read_csv("data/metabolomic/WEB_DATA_METABOLON_ALL.TXT")) # Added _ALL
+# metabs <- as.data.frame(read_csv("../data/metabolomic/WEB_DATA_METABOLON_ALL.TXT")) # Added _ALL
 
   
   
@@ -165,7 +165,7 @@ to_write$metabolite <- gsub(",","",to_write$metabolite)
 
 ### Saving
 ```{r}
-write_csv(to_write, file = "data/metabolomic/metabolomic_clean_vsn.csv")
+write_csv(to_write, file = "../data/metabolomic/metabolomic_clean_vsn.csv")
 ```
 
 ### Scaling

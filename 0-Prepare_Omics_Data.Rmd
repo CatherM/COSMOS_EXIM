@@ -265,8 +265,6 @@ RNA_FPKM <- tibble::column_to_rownames(RNA_FPKM, "gene_id")
 rm(col_name)
 rm(temp)
 
-# read_file("L:\\basic\\divg\\EXIM\\ImmunoHematology\\Elena Camerini\\Bioinformatics\\EC024_CJ_RNAseq\\
-# Raw data from alignment\\rsem_count \\rsem_aligned_trimmed_SQ23034888-HD112_T48-HD112_T48_.transcript.bam")
 
 RNA_FPKM_day0 <- RNA_FPKM[,c(1:9)]
 RNA_FPKM_day2 <- RNA_FPKM[,c(10:18)]
