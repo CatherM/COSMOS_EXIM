@@ -25,7 +25,7 @@ Installing packages (if you have not yet)
 # BiocManager::install("metaboliteIDmapping")
 # BiocManager::install("vsn")
 # BiocManager::install("biomaRt")
-#
+
 ```
 
 Loading libraries:
@@ -37,7 +37,6 @@ library(dplyr)
 library(reshape2)
 library(pheatmap)
 library(vsn)
-library(metaboliteIDmapping)
 ```
 
 
@@ -60,7 +59,7 @@ RNA_rawcounts <- RNA_rawcounts[,c(-1)]
 
 
 # Order them so Day 0 and day 2 are separate. 
-RNA <- RNA_rawcounts[,c(7,9,6,2,5,14,15,16,17,18,3,8,4,1,10,11,12,13)] # I am editing things
+RNA <- RNA_rawcounts[,c(7,9,6,2,5,14,15,16,17,18,3,8,4,1,10,11,12,13)] 
 RNA$GENE_ID <- rownames(RNA)
 
 # Remove redundant variables
