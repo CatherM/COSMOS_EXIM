@@ -25,7 +25,7 @@ Installing packages (if you have not yet)
 # BiocManager::install("metaboliteIDmapping")
 # BiocManager::install("vsn")
 # BiocManager::install("biomaRt")
-
+#
 ```
 
 Loading libraries:
@@ -46,10 +46,10 @@ library(metaboliteIDmapping)
 Step 1. Importing raw gene expression data (transcriptomic):
 ```{r}
 ############ Path to data AMC PC ############ 
-# rawcounts_path <- "L:\\basic\\divg\\EXIM\\ImmunoHematology\\Cathy Magnée\\Data\\CD3_HDvsCLL\\Transcriptomic\\EC024_raw counts.csv"
+rawcounts_path <- "L:\\basic\\divg\\EXIM\\ImmunoHematology\\Cathy Magnée\\Data\\CD3_HDvsCLL\\Transcriptomic\\EC024_raw counts.csv"
 
 ############ Path to data laptop ############ 
-rawcounts_path <- "../ourdata/EC024_raw counts.csv"
+# rawcounts_path <- "../ourdata/EC024_raw counts.csv"
 
 # Loading data, changing first column into rownames and removing this column.
 RNA_rawcounts <- as.data.frame(read_csv(rawcounts_path))
@@ -60,7 +60,7 @@ RNA_rawcounts <- RNA_rawcounts[,c(-1)]
 
 
 # Order them so Day 0 and day 2 are separate. 
-RNA <- RNA_rawcounts[,c(9,6,2,5,14,15,16,17,18,3,8,4,1,10,11,12,13)]
+RNA <- RNA_rawcounts[,c(7,9,6,2,5,14,15,16,17,18,3,8,4,1,10,11,12,13)] # I am editing things
 RNA$GENE_ID <- rownames(RNA)
 
 # Remove redundant variables
@@ -71,15 +71,15 @@ Step 2. Importing the FPKM values
 ```{r}
 ### This is raw counts, we want the FPKM data:
 # Prepare a FPKM df
-RNA_FPKM <- RNA
+RNA_FPKM <- RNA[,c(1:18)]
 RNA_FPKM$gene_id <- rownames(RNA_FPKM)
 
 # Path to files containing FPKM values 
 ############ AMC ############ 
-# rsem_count.path <- "L:/basic/divg/EXIM/ImmunoHematology/Elena Camerini/Bioinformatics/EC024_CJ_RNAseq/Raw data from alignment/rsem_count"
+rsem_count.path <- "L:/basic/divg/EXIM/ImmunoHematology/Elena Camerini/Bioinformatics/EC024_CJ_RNAseq/Raw data from alignment/rsem_count"
 
 ############ Laptop ############ 
-rsem_count.path <- "../ourdata/rsem_count"
+# rsem_count.path <- "../ourdata/rsem_count"
 
 # genes.results files
 all_files <- list.files(path = rsem_count.path, pattern = "*.genes.results", full.names = TRUE)
@@ -110,7 +110,10 @@ for (col_name in colnames(RNA_rawcounts)) {
 # Remove redundant variables
 rm(col_name)
 rm(temp)
-
+rm(all_files)
+rm(matching_files)
+rm(rsem_count.path)
+rm(file_path)
 
 ```
 
@@ -153,26 +156,28 @@ rm(filters)
 rm(list)
 
 # Remove column containing the gene names
-RNA_FPKM <- tibble::column_to_rownames(RNA_FPKM, "gene_id")
+rownames(RNA_FPKM) <- RNA_FPKM$Gene_name
+RNA_FPKM <- RNA_FPKM[,c(1:18)]
+# RNA_FPKM <- tibble::column_to_rownames(RNA_FPKM, "Gene_name")
 
 # Create day 0 and day 2 dfs
-RNA_FPKM_day0 <- RNA_FPKM[,c(1:9)]
-RNA_FPKM_day2 <- RNA_FPKM[,c(10:18)]
+RNA_FPKM_day0 <- RNA_FPKM[,c(1:10)]
+RNA_FPKM_day2 <- RNA_FPKM[,c(11:18)]
 
 # Save the data
 ############ AMC ############ 
-# write.csv(RNA_FPKM,file = "L:\\basic\\divg\\EXIM\\ImmunoHematology\\Cathy Magnée\\Data\\CD3_HDvsCLL\\Transcriptomic\\all_RNA_FPKM.csv")
-# 
-# write.csv(RNA_FPKM_day0,file = "L:\\basic\\divg\\EXIM\\ImmunoHematology\\Cathy Magnée\\Data\\CD3_HDvsCLL\\Transcriptomic\\day0_RNA_FPKM.csv")
-# 
-# write.csv(RNA_FPKM_day2,file = "L:\\basic\\divg\\EXIM\\ImmunoHematology\\Cathy Magnée\\Data\\CD3_HDvsCLL\\Transcriptomic\\day2_RNA_FPKM.csv")
+write.csv(RNA_FPKM,file = "L:\\basic\\divg\\EXIM\\ImmunoHematology\\Cathy Magnée\\Data\\CD3_HDvsCLL\\Transcriptomic\\all_RNA_FPKM.csv")
+
+write.csv(RNA_FPKM_day0,file = "L:\\basic\\divg\\EXIM\\ImmunoHematology\\Cathy Magnée\\Data\\CD3_HDvsCLL\\Transcriptomic\\day0_RNA_FPKM.csv")
+
+write.csv(RNA_FPKM_day2,file = "L:\\basic\\divg\\EXIM\\ImmunoHematology\\Cathy Magnée\\Data\\CD3_HDvsCLL\\Transcriptomic\\day2_RNA_FPKM.csv")
 
 ############ Laptop ############ 
-write.csv(RNA_FPKM,file = "../ourdata/transcriptomics/all_RNA_FPKM.csv")
-
-write.csv(RNA_FPKM_day0,file = "../ourdata/transcriptomics/day0_RNA_FPKM.csv")
-
-write.csv(RNA_FPKM_day2,file = "../ourdata/transcriptomics/day2_RNA_FPKM.csv")
+# write.csv(RNA_FPKM,file = "../ourdata/transcriptomics/all_RNA_FPKM.csv")
+# 
+# write.csv(RNA_FPKM_day0,file = "../ourdata/transcriptomics/day0_RNA_FPKM.csv")
+# 
+# write.csv(RNA_FPKM_day2,file = "../ourdata/transcriptomics/day2_RNA_FPKM.csv")
 
 ```
 
@@ -184,25 +189,25 @@ RNA_log2_FPKM <- log2(RNA_FPKM)
 # Change previous 0 (which turns to -Inf) back into 0
 RNA_log2_FPKM[RNA_log2_FPKM==-Inf]=0
 
-RNA_log2_FPKM_day0 <- RNA_log2_FPKM[,c(1:9)]
-RNA_log2_FPKM_day2 <- RNA_log2_FPKM[,c(10:18)]
+RNA_log2_FPKM_day0 <- RNA_log2_FPKM[,c(1:10)]
+RNA_log2_FPKM_day2 <- RNA_log2_FPKM[,c(11:18)]
 
 
 ### Saving these files again, separately 
 
 ############ AMC ############ 
-# write.csv(RNA_log2_FPKM,file = "L:\\basic\\divg\\EXIM\\ImmunoHematology\\Cathy Magnée\\Data\\CD3_HDvsCLL\\Transcriptomic\\all_RNA_log2_FPKM.csv")
-# 
-# write.csv(RNA_log2_FPKM_day0,file = "L:\\basic\\divg\\EXIM\\ImmunoHematology\\Cathy Magnée\\Data\\CD3_HDvsCLL\\Transcriptomic\\day0_RNA_log2_FPKM.csv")
-# 
-# write.csv(RNA_log2_FPKM_day2,file = "L:\\basic\\divg\\EXIM\\ImmunoHematology\\Cathy Magnée\\Data\\CD3_HDvsCLL\\Transcriptomic\\day2_RNA_log2_FPKM.csv")
+write.csv(RNA_log2_FPKM,file = "L:\\basic\\divg\\EXIM\\ImmunoHematology\\Cathy Magnée\\Data\\CD3_HDvsCLL\\Transcriptomic\\all_RNA_log2_FPKM.csv")
+
+write.csv(RNA_log2_FPKM_day0,file = "L:\\basic\\divg\\EXIM\\ImmunoHematology\\Cathy Magnée\\Data\\CD3_HDvsCLL\\Transcriptomic\\day0_RNA_log2_FPKM.csv")
+
+write.csv(RNA_log2_FPKM_day2,file = "L:\\basic\\divg\\EXIM\\ImmunoHematology\\Cathy Magnée\\Data\\CD3_HDvsCLL\\Transcriptomic\\day2_RNA_log2_FPKM.csv")
 
 ############ Laptop ############ 
-write.csv(RNA_FPKM,file = "../ourdata/transcriptomics/all_RNA_log2_FPKM.csv")
-
-write.csv(RNA_FPKM_day0,file = "../ourdata/transcriptomics/day0_RNA_log2_FPKM.csv")
-
-write.csv(RNA_FPKM_day2,file = "../ourdata/transcriptomics/day2_RNA_log2_FPKM.csv")
+# write.csv(RNA_FPKM,file = "../ourdata/transcriptomics/all_RNA_log2_FPKM.csv")
+# 
+# write.csv(RNA_FPKM_day0,file = "../ourdata/transcriptomics/day0_RNA_log2_FPKM.csv")
+# 
+# write.csv(RNA_FPKM_day2,file = "../ourdata/transcriptomics/day2_RNA_log2_FPKM.csv")
 ```
 Log2 transformed data is the typical input of COSMOS. 
 
@@ -213,12 +218,12 @@ Also excluding some columns
 ```{r}
 
 # Path do data: AMC PC
-# day0_path <- "L:\\basic\\divg\\EXIM\\ImmunoHematology\\Cathy Magnée\\Data\\CD3_HDvsCLL\\Metabolomic\\DataForStatistics_day0.csv"
-# day2_path <- "L:\\basic\\divg\\EXIM\\ImmunoHematology\\Cathy Magnée\\Data\\CD3_HDvsCLL\\Metabolomic\\DataForStatistics_day2.csv"
+day0_path <- "L:\\basic\\divg\\EXIM\\ImmunoHematology\\Cathy Magnée\\Data\\CD3_HDvsCLL\\Metabolomic\\DataForStatistics_day0.csv"
+day2_path <- "L:\\basic\\divg\\EXIM\\ImmunoHematology\\Cathy Magnée\\Data\\CD3_HDvsCLL\\Metabolomic\\DataForStatistics_day2.csv"
 
 # Path to data laptop
-day0_path <- "../ourdata/DataForStatistics_day0.csv"
-day2_path <- "../ourdata/DataForStatistics_day2.csv"
+# day0_path <- "../ourdata/DataForStatistics_day0.csv"
+# day2_path <- "../ourdata/DataForStatistics_day2.csv"
 
 # Loading data
 metabs_day0 <- as.data.frame(read_csv(day0_path))
@@ -235,10 +240,10 @@ metabs_day2 <- metabs_day2[,-c(1,11,12,13,14,15)]
 # Fix day0 order of columns (CLL first, then control)
 metabs_day0 <- metabs_day0[,c(6,7,8,9,10,1,2,3,4,5)]
 
-# Remove day0 CLL_01, as there is no transcriptomic data available
+# Remove day0 CLL_01, as there is no gene expression data available
 metabs_day0 <- metabs_day0[,c(-1)]
 
-# Remove day2 Control_03, as there is no transcriptomic data available
+# Remove day2 Control_03, as there is no gene expression data available
 metabs_day2 <- metabs_day2[,c(-7)]
 
 # removing unnecessary variables / values
@@ -291,6 +296,7 @@ Note that this happens later in the 'classic' FACTOR_Cosmos pipeline.
 
 Step 3. Saving data
 ```{r}
+
 write.csv(metabs_day0,file = "../ourdata/metabolomic/day0_metabs_hmdb.csv")
 
 write.csv(metabs_day2,file = "../ourdata/metabolomic/day2_metabs_hmdb.csv")
