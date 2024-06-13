@@ -9,11 +9,11 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-## Preprocessing T cell omics data
+## Preparing T cell omics data
 
-This document describes the preprocessing of transcriptomic and metabolomic T cell data. It is based off the preprocessing documents in the FACTOR_Cosmos No_MOFA branch by Saezlab on github. This document is precedes the 2 - Preparing Cosmos inputs.Rmd document. 
+This document describes the preparation of transcriptomic and metabolomic T cell data. It is based off the preprocessing documents in the FACTOR_Cosmos No_MOFA branch by Saezlab on github. This document is precedes the 2 - Preprocessing omics data.Rmd document. 
 
-This document is annotated to explain the steps and the choices that were made durnig this project. Other options will also be highlighted.
+This document is annotated to explain the steps and the choices that were made durnig this project. Other options will be highlighted.
 
 ### Loading libraries
 Installing packages (if you have not yet)
@@ -22,7 +22,6 @@ Installing packages (if you have not yet)
 # if (!require("BiocManager", quietly = TRUE))
 #     install.packages("BiocManager")
 # 
-# BiocManager::install("metaboliteIDmapping")
 # BiocManager::install("vsn")
 # BiocManager::install("biomaRt")
 
@@ -271,7 +270,7 @@ Step 2. Editing metabolite names to HMDB ID's
 metabolite_matching <- as.data.frame(read_excel("L:/basic/divg/EXIM/ImmunoHematology/Cathy Magnée/Data/CD3_HDvsCLL/Metabolomic/Statistical Data_Incl_HMDB.xlsx"))
 
 # Laptop Path
-metabolite_matching <- as.data.frame(read_excel("ourdata/Statistical Data_Incl_HMDB.xlsx"))
+# metabolite_matching <- as.data.frame(read_excel("ourdata/Statistical Data_Incl_HMDB.xlsx"))
 
 metabolite_matching <- metabolite_matching[,c(1,5)]
 
