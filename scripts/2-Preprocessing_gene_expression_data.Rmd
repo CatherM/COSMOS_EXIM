@@ -1,0 +1,68 @@
+---
+title: "2 - Preprocessing gene expression data"
+author: "Cathy Magnée, Saezlab"
+date: "2024-06-13"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Preprocessing T cell transcriptomics data
+
+This document describes the preprocessing of transcriptomic and metabolomic T cell data. It is based off the preprocessing documents in the FACTOR_Cosmos No_MOFA branch by Saezlab on github. This document is precedes the 2 - Preprocessing omics data.Rmd document. 
+
+This document is annotated to explain the steps and the choices that were made durnig this project. Other options will be highlighted.
+
+### Loading libraries
+Installing packages (if you have not yet)
+
+```{r}
+# if (!require("BiocManager", quietly = TRUE))
+#     install.packages("BiocManager")
+# 
+# BiocManager::install("vsn")
+# BiocManager::install("biomaRt")
+
+```
+
+Loading libraries:
+```{r}
+library(readxl)
+library(readr)
+library(pheatmap)
+library(tibble)
+```
+
+Loading data
+```{r}
+
+# Defining paths
+############ AMC ############  
+day0_RNA_path <- "L:\\basic\\divg\\EXIM\\ImmunoHematology\\Cathy Magnée\\Data\\CD3_HDvsCLL\\Transcriptomic\\day0_RNA_log2_FPKM.csv"
+
+day2_RNA_path <- "L:\\basic\\divg\\EXIM\\ImmunoHematology\\Cathy Magnée\\Data\\CD3_HDvsCLL\\Transcriptomic\\day2_RNA_log2_FPKM.csv"
+
+############ Laptop ############ 
+# day0_RNA_path <- "ourdata/day0_RNA_log2_FPKM.csv"
+# day2_RNA_path <- "ourdata/day2_RNA_log2_FPKM.csv"
+
+
+# Loading data
+day0_RNA_log2_FPKM <- as.data.frame(read_csv(day0_RNA_path))
+
+day2_RNA_log2_FPKM <- as.data.frame(read_csv(day2_RNA_path))
+
+# Change first column to rownames
+day0_RNA_log2_FPKM <- tibble::column_to_rownames(day0_RNA_log2_FPKM, var = "...1")
+day2_RNA_log2_FPKM <- tibble::column_to_rownames(day2_RNA_log2_FPKM, var = "...1")
+
+# Remove redundant variables
+rm(day0_RNA_path)
+rm(day2_RNA_path)
+
+```
+
+
+### Transcriptomics
