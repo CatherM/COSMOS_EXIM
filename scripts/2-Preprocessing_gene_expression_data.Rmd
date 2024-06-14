@@ -40,13 +40,13 @@ Loading data
 
 # Defining paths
 ############ AMC ############  
-# day0_RNA_path <- "L:\\basic\\divg\\EXIM\\ImmunoHematology\\Cathy Magnée\\Data\\CD3_HDvsCLL\\Transcriptomic\\day0_RNA_log2_FPKM.csv"
-# 
-# day2_RNA_path <- "L:\\basic\\divg\\EXIM\\ImmunoHematology\\Cathy Magnée\\Data\\CD3_HDvsCLL\\Transcriptomic\\day2_RNA_log2_FPKM.csv"
+day0_RNA_path <- "L:\\basic\\divg\\EXIM\\ImmunoHematology\\Cathy Magnée\\Data\\CD3_HDvsCLL\\Transcriptomic\\day0_RNA_log2_FPKM.csv"
+
+day2_RNA_path <- "L:\\basic\\divg\\EXIM\\ImmunoHematology\\Cathy Magnée\\Data\\CD3_HDvsCLL\\Transcriptomic\\day2_RNA_log2_FPKM.csv"
 
 ############ Laptop ############ 
-day0_RNA_path <- "../ourdata/transcriptomic/day0_RNA_log2_FPKM.csv"
-day2_RNA_path <- "../ourdata/transcriptomic/day2_RNA_log2_FPKM.csv"
+# day0_RNA_path <- "../ourdata/transcriptomic/day0_RNA_log2_FPKM.csv"
+# day2_RNA_path <- "../ourdata/transcriptomic/day2_RNA_log2_FPKM.csv"
 
 # day0_RNA_path <- "../ourdata/transcriptomic/day0_RNA_raw.csv"
 # day2_RNA_path <- "../ourdata/transcriptomic/day2_RNA_raw.csv"
@@ -66,6 +66,41 @@ rm(day2_RNA_path)
 
 ```
 
+### Create function to clean data
+
+```{r}
+# Cleaning function
+clean_gene_expression_data <- function(RNA_log2_FPKM) {
+  # Everything less than 1 should be NA
+  RNA_log2_FPKM[RNA_log2_FPKM < 1] <- NA 
+  hist(as.numeric(unlist(RNA_log2_FPKM)), breaks = 1000)
+  # All genes that have no expression in > 20% of samples should be removed
+  RNA_log2_FPKM[rowSums(is.na(RNA_log2_FPKM)) < 0.8*ncol(RNA_log2_FPKM),]
+}
+
+# Scaling function
+scale_gene_expression_data <- function(RNA_log2_FPKM_cleaned) {
+  # Grab Standard Deviation
+  SDs <- apply(RNA_log2_FPKM_cleaned,1,function(x){sd(x,na.rm = T)})
+  # Grab mean
+  means <- rowMeans(RNA_log2_FPKM_cleaned, na.rm = T)
+  # Z-normalization 
+  RNA_log2_FPKM_cleaned <- (RNA_log2_FPKM_cleaned - means) / SDs
+}
+```
+
+```{r}
+# hist(as.numeric(unlist(day0_RNA_log2_FPKM)), breaks = 1000)
+# day0_RNA_log2_FPKM_cleaned <- clean_gene_expression_data(day0_RNA_log2_FPKM)
+# hist(as.numeric(unlist(day0_RNA_log2_FPKM_cleaned)), breaks = 1000)
+# 
+# day0_RNA_log2_FPKM_cleaned <- scale_gene_expression_data(day0_RNA_log2_FPKM_cleaned)
+# hist(as.numeric(unlist(day0_RNA_log2_FPKM_cleaned[,c(1:8)])), breaks = 1000)
+# hist(as.numeric(unlist(day0_RNA_log2_FPKM_cleaned[,c(1:4)])), breaks = 1000)
+# hist(as.numeric(unlist(day0_RNA_log2_FPKM_cleaned[,c(5:8)])), breaks = 1000)
+
+```
+
 
 ### Plotting data
 
@@ -75,21 +110,24 @@ hist(as.numeric(unlist(day0_RNA_log2_FPKM)), breaks = 1000)
 hist(as.numeric(unlist(day2_RNA_log2_FPKM)), breaks = 1000)
 
 ```
+
+
 Many <1, so let's remove those and plot again:
 ```{r}
-day0_RNA_log2_FPKM[day0_RNA_log2_FPKM < 1] <- NA
+
+day0_RNA_log2_FPKM[day0_RNA_log2_FPKM <= 0] <- NA
 hist(as.numeric(unlist(day0_RNA_log2_FPKM)), breaks = 1000) 
 
-day2_RNA_log2_FPKM[day2_RNA_log2_FPKM < 1] <- NA
+day2_RNA_log2_FPKM[day2_RNA_log2_FPKM <= 0] <- NA
 hist(as.numeric(unlist(day2_RNA_log2_FPKM)), breaks = 1000) 
 ```
 
-It does not work. I cry.
-
-Let's remove all rows (genes) where >20% is NA (8 out of 10)
+Let's remove all rows (genes) where >20% is NA
+For day0, where there are 10 samples, this means to keep all samples where <8 out of 10 are NA.
+For day2, this means to keep samples where less than 6.4 out of 8 are NA
 
 ```{r}
-day0_RNA_log2_FPKM <- day0_RNA_log2_FPKM[rowSums(is.na(day0_RNA_log2_FPKM)) < 8,]
+day0_RNA_log2_FPKM <- day0_RNA_log2_FPKM[rowSums(is.na(day0_RNA_log2_FPKM)) < 0.8*ncol(day0_RNA_log2_FPKM),]
 
 hist(as.numeric(unlist(day0_RNA_log2_FPKM)), breaks = 1000) 
 
@@ -98,5 +136,10 @@ day2_RNA_log2_FPKM <- day2_RNA_log2_FPKM[rowSums(is.na(day2_RNA_log2_FPKM)) < 6,
 
 hist(as.numeric(unlist(day2_RNA_log2_FPKM)), breaks = 1000) 
 
+hist(as.numeric(unlist(day2_RNA_log2_FPKM[,c(1:4)])), breaks = 1000) 
+hist(as.numeric(unlist(day2_RNA_log2_FPKM[,c(5:8)])), breaks = 1000) 
+
+day2_RNA_log2_FPKM <- scale_gene_expression_data(day2_RNA_log2_FPKM)
+hist(as.numeric(unlist(day2_RNA_log2_FPKM)), breaks = 1000) 
 ```
 
