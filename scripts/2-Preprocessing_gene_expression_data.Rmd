@@ -40,14 +40,16 @@ Loading data
 
 # Defining paths
 ############ AMC ############  
-day0_RNA_path <- "L:\\basic\\divg\\EXIM\\ImmunoHematology\\Cathy Magnée\\Data\\CD3_HDvsCLL\\Transcriptomic\\day0_RNA_log2_FPKM.csv"
-
-day2_RNA_path <- "L:\\basic\\divg\\EXIM\\ImmunoHematology\\Cathy Magnée\\Data\\CD3_HDvsCLL\\Transcriptomic\\day2_RNA_log2_FPKM.csv"
+# day0_RNA_path <- "L:\\basic\\divg\\EXIM\\ImmunoHematology\\Cathy Magnée\\Data\\CD3_HDvsCLL\\Transcriptomic\\day0_RNA_log2_FPKM.csv"
+# 
+# day2_RNA_path <- "L:\\basic\\divg\\EXIM\\ImmunoHematology\\Cathy Magnée\\Data\\CD3_HDvsCLL\\Transcriptomic\\day2_RNA_log2_FPKM.csv"
 
 ############ Laptop ############ 
-# day0_RNA_path <- "ourdata/day0_RNA_log2_FPKM.csv"
-# day2_RNA_path <- "ourdata/day2_RNA_log2_FPKM.csv"
+day0_RNA_path <- "../ourdata/transcriptomic/day0_RNA_log2_FPKM.csv"
+day2_RNA_path <- "../ourdata/transcriptomic/day2_RNA_log2_FPKM.csv"
 
+# day0_RNA_path <- "../ourdata/transcriptomic/day0_RNA_raw.csv"
+# day2_RNA_path <- "../ourdata/transcriptomic/day2_RNA_raw.csv"
 
 # Loading data
 day0_RNA_log2_FPKM <- as.data.frame(read_csv(day0_RNA_path))
@@ -65,4 +67,36 @@ rm(day2_RNA_path)
 ```
 
 
-### Transcriptomics
+### Plotting data
+
+Day 0
+```{r}
+hist(as.numeric(unlist(day0_RNA_log2_FPKM)), breaks = 1000)
+hist(as.numeric(unlist(day2_RNA_log2_FPKM)), breaks = 1000)
+
+```
+Many <1, so let's remove those and plot again:
+```{r}
+day0_RNA_log2_FPKM[day0_RNA_log2_FPKM < 1] <- NA
+hist(as.numeric(unlist(day0_RNA_log2_FPKM)), breaks = 1000) 
+
+day2_RNA_log2_FPKM[day2_RNA_log2_FPKM < 1] <- NA
+hist(as.numeric(unlist(day2_RNA_log2_FPKM)), breaks = 1000) 
+```
+
+It does not work. I cry.
+
+Let's remove all rows (genes) where >20% is NA (8 out of 10)
+
+```{r}
+day0_RNA_log2_FPKM <- day0_RNA_log2_FPKM[rowSums(is.na(day0_RNA_log2_FPKM)) < 8,]
+
+hist(as.numeric(unlist(day0_RNA_log2_FPKM)), breaks = 1000) 
+
+
+day2_RNA_log2_FPKM <- day2_RNA_log2_FPKM[rowSums(is.na(day2_RNA_log2_FPKM)) < 6,]
+
+hist(as.numeric(unlist(day2_RNA_log2_FPKM)), breaks = 1000) 
+
+```
+
