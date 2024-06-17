@@ -113,11 +113,11 @@ hist(as.numeric(unlist(log2(metabs_df))), breaks = 1000) #Things looks like they
 ```
 Heatmap:
 ```{r}
-no_zero_metabs_df <- metabs_df
-
-no_zero_metabs_df[no_zero_metabs_df==0]=NA
-
-pheatmap(log2(as.matrix(na.omit(no_zero_metabs_df))), show_colnames = T, show_rownames = F) 
+# no_zero_metabs_df <- metabs_df
+# 
+# no_zero_metabs_df[no_zero_metabs_df==0]=NA
+# 
+# pheatmap(log2(as.matrix(na.omit(no_zero_metabs_df))), show_colnames = T, show_rownames = F) 
 
 
 # log <- as.numeric(as.matrix(log2(metabs_df)))

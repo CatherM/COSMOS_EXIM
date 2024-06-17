@@ -1,0 +1,114 @@
+---
+title: "3 - Preprocessing Metabolomics"
+author: "Cathy Magnée, Saezlab"
+date: "2024-06-17"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Preprocessing metabolomics data 
+
+This document describes the preprocessing of metabolomic T cell data. It is based off the preprocessing documents in the FACTOR_Cosmos No_MOFA branch by Saezlab on github. This document is precedes the 2 - Preprocessing transcriptomics data.Rmd document. 
+
+This document is annotated to explain the steps and the choices that were made durnig this project. Other options will be highlighted.
+
+#### Loading
+
+Libraries
+```{r, echo=FALSE, warning=FALSE}
+library(readr)
+library(reshape2)
+library(pheatmap)
+library(vsn)
+library(tibble)
+```
+
+Data paths:
+Splitting these in AMC and Laptop, so it is easier to switch. 
+
+AMC:
+```{r}
+# day0_path <- "L:\\basic\\divg\\EXIM\\ImmunoHematology\\Cathy Magnée\\Data\\CD3_HDvsCLL\\Metabolomic\\day0_metabs_raw.csv"
+# day2_path <- "L:\\basic\\divg\\EXIM\\ImmunoHematology\\Cathy Magnée\\Data\\CD3_HDvsCLL\\Metabolomic\\day2_metabs_raw.csv"
+
+# or hmdb?
+day0_path <- "L:\\basic\\divg\\EXIM\\ImmunoHematology\\Cathy Magnée\\Data\\CD3_HDvsCLL\\Metabolomic\\day0_metabs_hmdb.csv"
+day2_path <- "L:\\basic\\divg\\EXIM\\ImmunoHematology\\Cathy Magnée\\Data\\CD3_HDvsCLL\\Metabolomic\\day2_metabs_hmdb.csv"
+
+```
+Laptop:
+```{r}
+# day0_path <- "../ourdata/metabolomic/day0_metabs_raw.csv"
+# day2_path <- "../ourdata/metabolomic/day2_metabs_raw.csv"
+# 
+# # or hmdb?
+# day0_path <- "../ourdata/metabolomic/day0_metabs_hmdb.csv"
+# day2_path <- "../ourdata/metabolomic/day2_metabs_hmdb.csv"
+```
+
+Loading data and removing paths:
+```{r}
+# day0_metabs_raw <- as.data.frame(read_csv(day0_path))
+# day2_metabs_raw <- as.data.frame(read_csv(day2_path))
+
+# or hmdb?
+day0_metabs_hmdb <- as.data.frame(read_csv(day0_path))
+day2_metabs_hmdb <- as.data.frame(read_csv(day2_path))
+
+# Adjusting first column to rownames
+day0_metabs_hmdb <- tibble::column_to_rownames(day0_metabs_hmdb, var = "...1")
+day2_metabs_hmdb <- tibble::column_to_rownames(day2_metabs_hmdb, var = "...1")
+
+# Removing redundant paths
+rm(day0_path)
+rm(day2_path)
+
+```
+
+### Plotting and filtering
+
+Plotting the data to see the distribution is the first step to understanding our data
+
+```{r}
+hist(as.numeric(unlist(log2(day0_metabs_hmdb))), breaks = 500)
+hist(as.numeric(unlist(log2(day2_metabs_hmdb))), breaks = 500)
+
+```
+
+Removing Outliers:
+Let's start with removing the -Inf datapoints
+```{r}
+day0_metabs_hmdb[day0_metabs_hmdb==0]= NA
+day2_metabs_hmdb[day2_metabs_hmdb==0]= NA
+```
+
+```{r}
+hist(as.numeric(unlist(log2(day0_metabs_hmdb))), breaks = 500)
+hist(as.numeric(unlist(log2(day2_metabs_hmdb))), breaks = 500)
+
+```
+
+The histogram values of (log) day2 are only negative. This means the m/z ratios are all between 0-1. To account for this, the 
+```{r}
+
+
+metabs_df <- day2_metabs_hmdb
+metabs_df[abs(metabs_df) <= 0.001 ] <- NA
+# metabs_df[abs(log2(metabs_df)) < 0.5] <- NA
+pheatmap(log2(as.matrix(na.omit(day0_metabs_hmdb))), show_colnames = T, show_rownames = F)
+
+# no_zero_metabs_df[no_zero_metabs_df==0]=NA
+# 
+# pheatmap(log2(as.matrix(na.omit(no_zero_metabs_df))), show_colnames = T, show_rownames = F) 
+
+
+# log <- as.numeric(as.matrix(log2(metabs_df)))
+
+
+hist(as.numeric(unlist(log2(metabs_df))), breaks = 500)
+
+```
+

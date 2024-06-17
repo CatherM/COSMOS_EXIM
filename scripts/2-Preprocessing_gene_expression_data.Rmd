@@ -11,7 +11,7 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ## Preprocessing T cell transcriptomics data
 
-This document describes the preprocessing of transcriptomic and metabolomic T cell data. It is based off the preprocessing documents in the FACTOR_Cosmos No_MOFA branch by Saezlab on github. This document is precedes the 2 - Preprocessing omics data.Rmd document. 
+This document describes the preprocessing of transcriptomic and metabolomic T cell data. It is based off the preprocessing documents in the FACTOR_Cosmos No_MOFA branch by Saezlab on github. This document is precedes the 1 - Preparing omics data.Rmd document. 
 
 This document is annotated to explain the steps and the choices that were made durnig this project. Other options will be highlighted.
 
@@ -111,14 +111,14 @@ hist(as.numeric(unlist(day2_RNA_log2_FPKM)), breaks = 1000)
 
 ```
 
-
+### Filtering Data
 Many <1, so let's remove those and plot again:
 ```{r}
 
-day0_RNA_log2_FPKM[day0_RNA_log2_FPKM <= 0] <- NA
+day0_RNA_log2_FPKM[day0_RNA_log2_FPKM < 1] <- NA
 hist(as.numeric(unlist(day0_RNA_log2_FPKM)), breaks = 1000) 
 
-day2_RNA_log2_FPKM[day2_RNA_log2_FPKM <= 0] <- NA
+day2_RNA_log2_FPKM[day2_RNA_log2_FPKM < 1] <- NA
 hist(as.numeric(unlist(day2_RNA_log2_FPKM)), breaks = 1000) 
 ```
 
@@ -131,15 +131,36 @@ day0_RNA_log2_FPKM <- day0_RNA_log2_FPKM[rowSums(is.na(day0_RNA_log2_FPKM)) < 0.
 
 hist(as.numeric(unlist(day0_RNA_log2_FPKM)), breaks = 1000) 
 
-
-day2_RNA_log2_FPKM <- day2_RNA_log2_FPKM[rowSums(is.na(day2_RNA_log2_FPKM)) < 6,]
-
+day2_RNA_log2_FPKM <- day2_RNA_log2_FPKM[rowSums(is.na(day2_RNA_log2_FPKM)) < 0.8*ncol(day2_RNA_log2_FPKM),]
 hist(as.numeric(unlist(day2_RNA_log2_FPKM)), breaks = 1000) 
 
-hist(as.numeric(unlist(day2_RNA_log2_FPKM[,c(1:4)])), breaks = 1000) 
-hist(as.numeric(unlist(day2_RNA_log2_FPKM[,c(5:8)])), breaks = 1000) 
+# hist(as.numeric(unlist(day2_RNA_log2_FPKM[,c(1:4)])), breaks = 1000)
+# hist(as.numeric(unlist(day2_RNA_log2_FPKM[,c(5:8)])), breaks = 1000)
 
-day2_RNA_log2_FPKM <- scale_gene_expression_data(day2_RNA_log2_FPKM)
-hist(as.numeric(unlist(day2_RNA_log2_FPKM)), breaks = 1000) 
+# day2_RNA_log2_FPKM <- scale_gene_expression_data(day2_RNA_log2_FPKM)
+# 
+# hist(as.numeric(unlist(day2_RNA_log2_FPKM)), breaks = 100)
+# 
+# day0_RNA_log2_FPKM <- scale_gene_expression_data(day0_RNA_log2_FPKM)
+# 
+# hist(as.numeric(unlist(day0_RNA_log2_FPKM[,c(1:4)])), breaks = 1000)
+# 
+# hist(as.numeric(unlist(day0_RNA_log2_FPKM[,c(5:8)])), breaks = 1000)
+
+
+```
+
+### Saving data
+AMC
+```{r}
+write.csv(day0_RNA_log2_FPKM,file = "L:\\basic\\divg\\EXIM\\ImmunoHematology\\Cathy Magnée\\Data\\CD3_HDvsCLL\\Transcriptomic\\day0_RNA_log2_FPKM_cleaned.csv")
+write.csv(day2_RNA_log2_FPKM,file = "L:\\basic\\divg\\EXIM\\ImmunoHematology\\Cathy Magnée\\Data\\CD3_HDvsCLL\\Transcriptomic\\day2_RNA_log2_FPKM_cleaned.csv")
+```
+
+Laptop
+```{r}
+
+# write.csv(day0_RNA_log2_FPKM,file = "../ourdata/transcriptomic/day0_RNA_log2_FPKM_cleaned.csv")
+# write.csv(day2_RNA_log2_FPKM,file = "../ourdata/transcriptomic/day2_RNA_log2_FPKM_cleaned.csv")
 ```
 
