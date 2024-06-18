@@ -1,0 +1,136 @@
+---
+title: "4 - Preparing COSMOS inputs"
+author: "Cathy Magnée, Saezlab"
+date: "2024-06-18"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Preparing COSMOS inputs
+
+This document describes the process of preparing metabolite and transcriptomic T cell data to form the input of COSMOS. This requires two main steps:
+1. Estimating TF activities from T cell transcriptomic data using DecoupleR and CollecTRI
+2. Combining the three datasets into one dataframe
+
+This script is based off the preprocessing documents in the FACTOR_Cosmos No_MOFA branch by Saezlab on github. This document is preceded by the 3 - Preprocessing gene expression data R markdown document and precedes the 5 - Run COSMOS R markdown document. 
+
+This document is annotated to explain the steps and the choices that were made during this project. Other options will be highlighted.
+
+#### Loading
+In case you need it: Install decoupleR here:
+```{r, echo = FALSE, warning=FALSE}
+# install.packages('remotes')
+# remotes::install_github('saezlab/decoupleR')
+# remotes::install_github('saezlab/OmnipathR')
+
+## To get Omnipath to work, I had to remove package xfun and install it via the cran webpage. I did this via:
+# packageurl <- "https://cran.r-project.org/bin/windows/contrib/4.5/xfun_0.45.zip"
+# > install.packages(packageurl, repos=NULL, type="source")
+
+```
+
+
+DecoupleR source:
+Badia-i-Mompel P., Vélez Santiago J., Braunger J., Geiss C., Dimitrov D., Müller-Dott S., Taus P., Dugourd A., Holland C.H., Ramirez Flores R.O. and Saez-Rodriguez J. 2022. decoupleR: ensemble of computational methods to infer biological activities from omics data. Bioinformatics Advances. <https://doi.org/10.1093/bioadv/vbac016>
+
+When loading we will also load CollecTRI. 
+CollecTRI research source:
+Müller-Dott S., Tsirvouli E., Vázquez M., Ramirez Flores R.O., Badia-i-Mompel P., Fallegger R., Lægreid A. and Saez-Rodriguez J. Expanding the coverage of regulons from high-confidence prior knowledge for accurate estimation of transcription factor activities. bioRxiv. 2023. DOI: <10.1101/2023.03.30.534849> 
+
+CollecTRI data source:
+
+Loading Libraries
+```{r}
+library(readr)
+library(decoupleR)
+library(OmnipathR)
+```
+
+Writing down data paths. This goes in two separate chunks: One for my AMC pc and one for my laptop. This way, it is easier to switch between the two. 
+Note that at the bottom of this document, there will also be two chunks to switch between based on workstation for saving the end result of the script. 
+On that note.
+AMC:
+```{r}
+############ Paths to load data from AMC PC ############ 
+# Day0
+path_day0_metabolomic_data <- "L:\\basic\\divg\\EXIM\\ImmunoHematology\\Cathy Magnée\\Data\\CD3_HDvsCLL\\Metabolomic\\day0_metabs_hmdb_scaled.csv"
+path_day0_transcriptomic_data <- "L:\\basic\\divg\\EXIM\\ImmunoHematology\\Cathy Magnée\\Data\\CD3_HDvsCLL\\Transcriptomic\\day0_RNA_log2_FPKM_cleaned.csv"
+
+#Day2
+path_day2_metabolomic_data <- "L:\\basic\\divg\\EXIM\\ImmunoHematology\\Cathy Magnée\\Data\\CD3_HDvsCLL\\Metabolomic\\day2_metabs_hmdb_scaled.csv"
+path_day2_transcriptomic_data <- "L:\\basic\\divg\\EXIM\\ImmunoHematology\\Cathy Magnée\\Data\\CD3_HDvsCLL\\Transcriptomic\\day2_RNA_log2_FPKM_cleaned.csv"
+
+
+```
+
+Laptop:
+```{r}
+############ Paths to load data from Laptop ############ 
+# Day0
+# path_day0_metabolomic_data <- "../ourdata/metabolomic/day0_metabs_hmdb_scaled.csv"
+# path_day0_transcriptomic_data <- "../ourdata/transcriptomic/day0_RNA_log2_FPKM_cleaned.csv"
+# 
+# # Day2
+# path_day2_metabolomic_data <-  "../ourdata/metabolomic/day2_metabs_hmdb_scaled.csv"
+# path_day2_transcriptomic_data <- "../ourdata/transcriptomic/day2_RNA_log2_FPKM_cleaned.csv"
+
+```
+
+Loading data and removing paths:
+```{r}
+day0_metabolomic <- as.data.frame(read_csv(path_day0_metabolomic_data))
+names(day0_metabolomic)[names(day0_metabolomic) == "...1"] <- "metabolite"
+
+day0_transcriptomic <- as.data.frame(read_csv(path_day0_transcriptomic_data))
+rownames(day0_transcriptomic) <- day0_transcriptomic$...1
+
+day2_metabolomic <- as.data.frame(read_csv(path_day2_metabolomic_data))
+names(day2_metabolomic)[names(day2_metabolomic) == "...1"] <- "metabolite"
+
+day2_transcriptomic <-  as.data.frame(read_csv(path_day2_transcriptomic_data))
+rownames(day2_transcriptomic) <- day2_transcriptomic$...1
+
+# CollecTRI <- decoupleR::get_collectri(organism='human', split_complexes=FALSE)
+
+# Remove redundant variables (paths)
+rm(path_day0_metabolomic_data) 
+rm(path_day0_transcriptomic_data)
+rm(path_day2_metabolomic_data) 
+rm(path_day2_transcriptomic_data)
+```
+
+### Intersect dataframes
+
+First, we want to make sure we have a complete gene expression and metabolomic dataset for each patient / donor. 
+We will test this by intersecting the column names of both dataframes and using only these column names for both.
+Day 0:
+```{r}
+cell_lines <- intersect(names(day0_metabolomic),names(day0_transcriptomic))
+
+day0_metabolomic <- day0_metabolomic[,c("metabolite",cell_lines)]
+day0_transcriptomic <- day0_transcriptomic[,cell_lines]
+```
+
+Day 2:
+```{r}
+cell_lines <- intersect(names(day2_metabolomic),names(day2_transcriptomic))
+
+day2_metabolomic <- day2_metabolomic[,c("metabolite",cell_lines)]
+day2_transcriptomic <- day2_transcriptomic[,cell_lines]
+```
+
+### TF Activity Estimation
+Text
+```{r}
+# Script
+```
+
+### Formatting COSMOS inputs
+Text
+```{r}
+# Script
+```
+

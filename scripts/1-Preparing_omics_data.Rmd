@@ -11,7 +11,7 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ## Preparing T cell omics data
 
-This document describes the preparation of transcriptomic and metabolomic T cell data. It is based off the preprocessing documents in the FACTOR_Cosmos No_MOFA branch by Saezlab on github. This document is precedes the 2 - Preprocessing omics data.Rmd document. 
+This document describes the preparation of transcriptomic and metabolomic T cell data. It is based off the preprocessing documents in the FACTOR_Cosmos No_MOFA branch by Saezlab on github. This document is precedes the 2 - Preprocessing gene expression data R markdown document. 
 
 This document is annotated to explain the steps and the choices that were made durnig this project. Other options will be highlighted.
 

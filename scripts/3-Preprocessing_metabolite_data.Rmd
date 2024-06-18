@@ -11,9 +11,9 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ## Preprocessing metabolomics data 
 
-This document describes the preprocessing of metabolomic T cell data. It is based off the preprocessing documents in the FACTOR_Cosmos No_MOFA branch by Saezlab on github. This document is precedes the 2 - Preprocessing transcriptomics data.Rmd document. 
+This document describes the preprocessing of metabolomic T cell data. It is based off the preprocessing documents in the FACTOR_Cosmos No_MOFA branch by Saezlab on github. This document is preceded by the 2 - Preprocessing transcriptomic data R markdown document and precedes the 4 - Preparing COSMOS inputs R markdown document. 
 
-This document is annotated to explain the steps and the choices that were made durnig this project. Other options will be highlighted.
+This document is annotated to explain the steps and the choices that were made during this project. Other options will be highlighted.
 
 #### Loading
 
@@ -78,37 +78,128 @@ hist(as.numeric(unlist(log2(day2_metabs_hmdb))), breaks = 500)
 
 ```
 
-Removing Outliers:
-Let's start with removing the -Inf datapoints
+Heatmaps:
 ```{r}
-day0_metabs_hmdb[day0_metabs_hmdb==0]= NA
-day2_metabs_hmdb[day2_metabs_hmdb==0]= NA
-```
+pheatmap(log2(day0_metabs_hmdb), show_colnames = F, show_rownames = F) 
 
-```{r}
-hist(as.numeric(unlist(log2(day0_metabs_hmdb))), breaks = 500)
-hist(as.numeric(unlist(log2(day2_metabs_hmdb))), breaks = 500)
+# pheatmap(abs(log2(day2_metabs_hmdb)), show_colnames = F, show_rownames = F)
 
 ```
 
-The histogram values of (log) day2 are only negative. This means the m/z ratios are all between 0-1. To account for this, the 
+
+In the day2 dataset the histogram of the log2 values are all negative. This means all values are between 0 and 1. This should be adjusted for later wehen we use VSN normalization
+
+The day0 heatmap also does not show much interesting as there are low values skewing the heatmap.
+
+For the log2(day0) dataset, there are a some outliers <-30
+For log2(day2), The outliers are -Inf (these are 0's)
+
+Removing outliers:
+```{r}
+day0_metabs_hmdb[log2(day0_metabs_hmdb) < -30] <- NA 
+day2_metabs_hmdb[log2(day2_metabs_hmdb) == -Inf] <- NA 
+
+```
+
+```{r}
+hist(as.numeric(unlist(log2(day0_metabs_hmdb))), breaks = 1000)
+hist(as.numeric(unlist(log2(day2_metabs_hmdb))), breaks = 1000)
+
+```
+Heatmaps after outlier removal:
+```{r}
+pheatmap(log2(day0_metabs_hmdb), show_colnames = F, show_rownames = F) 
+
+pheatmap(abs(log2(day2_metabs_hmdb)), show_colnames = F, show_rownames = F)
+```
+
+Removing new outliers
+- For log2 day0: <-1 and> 11
+- For log2 day2: <-16 and >-6
+
+```{r}
+day0_metabs_hmdb[log2(day0_metabs_hmdb) < -1] <- NA 
+day0_metabs_hmdb[log2(day0_metabs_hmdb) > 11 ] <- NA 
+
+day2_metabs_hmdb[log2(day2_metabs_hmdb) < -16] <- NA 
+day2_metabs_hmdb[log2(day2_metabs_hmdb) > 6] <- NA 
+```
+
+
+The histogram values of (log) day2 are only negative. This means the m/z ratios are all between 0-1. Currently, these values will mean nothing. Let's change this using two methods:
+
+1. Remove unwanted sample-to-sample variation
+(Normalization, includes centering, scaling and log transformation, mostly sample-bound transformations (in other words, column-wise)
+
+2. Adjusting variance of different metabolites to reduce sample heteroscedasticity. 
+(Mostly row-wise normalization)
+
+These methods are used at the same time, to make it more confusing. 
+Source for this: Sun J., Xia Y. (2024) Genes & Diseased (11:3). <https://doi.org/10.1016/j.gendis.2023.04.018.> 
+
+VSN normalization is used to adjust values to be able to compare across samples
+
+### VSN normalization
+First for day0
+```{r}
+day0_metabs_hmdb <- day0_metabs_hmdb[,-4]
+fit <- vsnMatrix(as.matrix(day0_metabs_hmdb))
+meanSdPlot(fit)
+day0_metabs_hmdb <- as.data.frame(vsn::predict(fit,as.matrix(day0_metabs_hmdb)))
+
+```
+Note that in the above chunk, CLL2474 is removed from the dataset as it proved to be an outlier in the downstream analysis. I do not want this to influence the vsnMatrix normalization. 
+
+Then for day2:
+```{r}
+fit <- vsnMatrix(as.matrix(day2_metabs_hmdb))
+meanSdPlot(fit)
+day2_metabs_hmdb <- as.data.frame(vsn::predict(fit,as.matrix(day2_metabs_hmdb)))
+```
+
+```{r}
+pheatmap(day0_metabs_hmdb[complete.cases(day0_metabs_hmdb),], show_colnames = T, show_rownames = F, cluster_rows = F) # , color = colorRampPalette(c("lightgrey","cornflowerblue", "blue"))(100)
+
+pheatmap(day2_metabs_hmdb[complete.cases(day2_metabs_hmdb),], show_colnames = T, show_rownames = F, cluster_rows = F) # , color = colorRampPalette(c("forestgreen","lightgrey", "blue"))(100))  
+```
+
+### Scaling using Z-normalization
+Day0:
 ```{r}
 
+SDs <- apply(day0_metabs_hmdb,1,function(x){sd(x,na.rm = T)})
+means <- rowMeans(day0_metabs_hmdb, na.rm = T)
+day0_metabs_scaled <- (day0_metabs_hmdb - means) / SDs
+pheatmap(day0_metabs_scaled[complete.cases(day0_metabs_scaled),], show_colnames = T, show_rownames = F, cluster_rows = F) 
 
-metabs_df <- day2_metabs_hmdb
-metabs_df[abs(metabs_df) <= 0.001 ] <- NA
-# metabs_df[abs(log2(metabs_df)) < 0.5] <- NA
-pheatmap(log2(as.matrix(na.omit(day0_metabs_hmdb))), show_colnames = T, show_rownames = F)
+hist(as.numeric(unlist(day0_metabs_scaled)), breaks = 1000) 
+```
 
-# no_zero_metabs_df[no_zero_metabs_df==0]=NA
-# 
-# pheatmap(log2(as.matrix(na.omit(no_zero_metabs_df))), show_colnames = T, show_rownames = F) 
+CLL2474 is an outlier. For now, this one is taken out (this has been done previously)
+
+Day2:
+```{r}
+SDs <- apply(day2_metabs_hmdb,1,function(x){sd(x,na.rm = T)})
+means <- rowMeans(day2_metabs_hmdb, na.rm = T)
+day2_metabs_scaled <- (day2_metabs_hmdb - means) / SDs
+pheatmap(day2_metabs_scaled[complete.cases(day2_metabs_scaled),], show_colnames = T, show_rownames = F, cluster_rows = F) 
+
+hist(as.numeric(unlist(day2_metabs_scaled)), breaks = 1000) 
+```
 
 
-# log <- as.numeric(as.matrix(log2(metabs_df)))
+### Save data
+AMC
+```{r}
+############ Paths to write data to AMC PC ############ 
+write.csv(day0_metabs_scaled,file = "L:\\basic\\divg\\EXIM\\ImmunoHematology\\Cathy Magnée\\Data\\CD3_HDvsCLL\\Metabolomic\\day0_metabs_hmdb_scaled.csv")
+write.csv(day2_metabs_scaled,file = "L:\\basic\\divg\\EXIM\\ImmunoHematology\\Cathy Magnée\\Data\\CD3_HDvsCLL\\Metabolomic\\day2_metabs_hmdb_scaled.csv")
+```
 
-
-hist(as.numeric(unlist(log2(metabs_df))), breaks = 500)
-
+Laptop
+```{r}
+############ Paths to write data to laptop ############ 
+# write.csv(day0_metabs_scaled,file = "../ourdata/metabolomic/day0_metabs_hmdb_scaled.csv")
+# write.csv(day2_metabs_scaled,file = "../ourdata/metabolomic/day2_metabs_hmdb_scaled.csv")
 ```
 
