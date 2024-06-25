@@ -36,20 +36,26 @@ library(tibble)
 ```
 
 Loading data
+AMC paths:
 ```{r}
-
-# Defining paths
 ############ AMC ############  
-day0_RNA_path <- "L:\\basic\\divg\\EXIM\\ImmunoHematology\\Cathy Magnée\\Data\\CD3_HDvsCLL\\Transcriptomic\\day0_RNA_log2_FPKM.csv"
+# day0_RNA_path <- "L:\\basic\\divg\\EXIM\\ImmunoHematology\\Cathy Magnée\\Data\\CD3_HDvsCLL\\Transcriptomic\\day0_RNA_log2_FPKM.csv"
+# 
+# day2_RNA_path <- "L:\\basic\\divg\\EXIM\\ImmunoHematology\\Cathy Magnée\\Data\\CD3_HDvsCLL\\Transcriptomic\\day2_RNA_log2_FPKM.csv"
 
-day2_RNA_path <- "L:\\basic\\divg\\EXIM\\ImmunoHematology\\Cathy Magnée\\Data\\CD3_HDvsCLL\\Transcriptomic\\day2_RNA_log2_FPKM.csv"
-
+```
+Laptop paths:
+```{r}
 ############ Laptop ############ 
-# day0_RNA_path <- "../ourdata/transcriptomic/day0_RNA_log2_FPKM.csv"
-# day2_RNA_path <- "../ourdata/transcriptomic/day2_RNA_log2_FPKM.csv"
+day0_RNA_path <- "../ourdata/transcriptomic/day0_RNA_log2_FPKM.csv"
+day2_RNA_path <- "../ourdata/transcriptomic/day2_RNA_log2_FPKM.csv"
+# 
+## day0_RNA_path <- "../ourdata/transcriptomic/day0_RNA_raw.csv" # Do not use these?
+## day2_RNA_path <- "../ourdata/transcriptomic/day2_RNA_raw.csv" # We do not use these
 
-# day0_RNA_path <- "../ourdata/transcriptomic/day0_RNA_raw.csv"
-# day2_RNA_path <- "../ourdata/transcriptomic/day2_RNA_raw.csv"
+```
+
+```{r}
 
 # Loading data
 day0_RNA_log2_FPKM <- as.data.frame(read_csv(day0_RNA_path))
@@ -153,14 +159,13 @@ hist(as.numeric(unlist(day2_RNA_log2_FPKM)), breaks = 1000)
 ### Saving data
 AMC
 ```{r}
-write.csv(day0_RNA_log2_FPKM,file = "L:\\basic\\divg\\EXIM\\ImmunoHematology\\Cathy Magnée\\Data\\CD3_HDvsCLL\\Transcriptomic\\day0_RNA_log2_FPKM_cleaned.csv")
-write.csv(day2_RNA_log2_FPKM,file = "L:\\basic\\divg\\EXIM\\ImmunoHematology\\Cathy Magnée\\Data\\CD3_HDvsCLL\\Transcriptomic\\day2_RNA_log2_FPKM_cleaned.csv")
+# write.csv(day0_RNA_log2_FPKM,file = "L:\\basic\\divg\\EXIM\\ImmunoHematology\\Cathy Magnée\\Data\\CD3_HDvsCLL\\Transcriptomic\\day0_RNA_log2_FPKM_cleaned.csv")
+# write.csv(day2_RNA_log2_FPKM,file = "L:\\basic\\divg\\EXIM\\ImmunoHematology\\Cathy Magnée\\Data\\CD3_HDvsCLL\\Transcriptomic\\day2_RNA_log2_FPKM_cleaned.csv")
 ```
 
 Laptop
 ```{r}
-
-# write.csv(day0_RNA_log2_FPKM,file = "../ourdata/transcriptomic/day0_RNA_log2_FPKM_cleaned.csv")
-# write.csv(day2_RNA_log2_FPKM,file = "../ourdata/transcriptomic/day2_RNA_log2_FPKM_cleaned.csv")
+write.csv(day0_RNA_log2_FPKM,file = "../ourdata/transcriptomic/day0_RNA_log2_FPKM_cleaned.csv")
+write.csv(day2_RNA_log2_FPKM,file = "../ourdata/transcriptomic/day2_RNA_log2_FPKM_cleaned.csv")
 ```
 

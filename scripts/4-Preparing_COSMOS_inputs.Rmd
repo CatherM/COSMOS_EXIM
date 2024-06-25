@@ -34,11 +34,11 @@ In case you need it: Install decoupleR here:
 
 
 DecoupleR source:
-Badia-i-Mompel P., Vélez Santiago J., Braunger J., Geiss C., Dimitrov D., Müller-Dott S., Taus P., Dugourd A., Holland C.H., Ramirez Flores R.O. and Saez-Rodriguez J. 2022. decoupleR: ensemble of computational methods to infer biological activities from omics data. Bioinformatics Advances. <https://doi.org/10.1093/bioadv/vbac016>
+[1] Badia-i-Mompel P., Vélez Santiago J., Braunger J., Geiss C., Dimitrov D., Müller-Dott S., Taus P., Dugourd A., Holland C.H., Ramirez Flores R.O. and Saez-Rodriguez J. 2022. decoupleR: ensemble of computational methods to infer biological activities from omics data. Bioinformatics Advances. <https://doi.org/10.1093/bioadv/vbac016>
 
 When loading we will also load CollecTRI. 
 CollecTRI research source:
-Müller-Dott S., Tsirvouli E., Vázquez M., Ramirez Flores R.O., Badia-i-Mompel P., Fallegger R., Lægreid A. and Saez-Rodriguez J. Expanding the coverage of regulons from high-confidence prior knowledge for accurate estimation of transcription factor activities. bioRxiv. 2023. DOI: <10.1101/2023.03.30.534849> 
+[2]Müller-Dott S., Tsirvouli E., Vázquez M., Ramirez Flores R.O., Badia-i-Mompel P., Fallegger R., Lægreid A. and Saez-Rodriguez J. Expanding the coverage of regulons from high-confidence prior knowledge for accurate estimation of transcription factor activities. bioRxiv. 2023. DOI: <10.1101/2023.03.30.534849> 
 
 CollecTRI data source:
 
@@ -47,6 +47,7 @@ Loading Libraries
 library(readr)
 library(decoupleR)
 library(OmnipathR)
+library(dplyr)
 ```
 
 Writing down data paths. This goes in two separate chunks: One for my AMC pc and one for my laptop. This way, it is easier to switch between the two. 
@@ -56,12 +57,12 @@ AMC:
 ```{r}
 ############ Paths to load data from AMC PC ############ 
 # Day0
-path_day0_metabolomic_data <- "L:\\basic\\divg\\EXIM\\ImmunoHematology\\Cathy Magnée\\Data\\CD3_HDvsCLL\\Metabolomic\\day0_metabs_hmdb_scaled.csv"
-path_day0_transcriptomic_data <- "L:\\basic\\divg\\EXIM\\ImmunoHematology\\Cathy Magnée\\Data\\CD3_HDvsCLL\\Transcriptomic\\day0_RNA_log2_FPKM_cleaned.csv"
-
-#Day2
-path_day2_metabolomic_data <- "L:\\basic\\divg\\EXIM\\ImmunoHematology\\Cathy Magnée\\Data\\CD3_HDvsCLL\\Metabolomic\\day2_metabs_hmdb_scaled.csv"
-path_day2_transcriptomic_data <- "L:\\basic\\divg\\EXIM\\ImmunoHematology\\Cathy Magnée\\Data\\CD3_HDvsCLL\\Transcriptomic\\day2_RNA_log2_FPKM_cleaned.csv"
+# path_day0_metabolomic_data <- "L:\\basic\\divg\\EXIM\\ImmunoHematology\\Cathy Magnée\\Data\\CD3_HDvsCLL\\Metabolomic\\day0_metabs_hmdb_scaled.csv"
+# path_day0_transcriptomic_data <- "L:\\basic\\divg\\EXIM\\ImmunoHematology\\Cathy Magnée\\Data\\CD3_HDvsCLL\\Transcriptomic\\day0_RNA_log2_FPKM_cleaned.csv"
+# 
+# #Day2
+# path_day2_metabolomic_data <- "L:\\basic\\divg\\EXIM\\ImmunoHematology\\Cathy Magnée\\Data\\CD3_HDvsCLL\\Metabolomic\\day2_metabs_hmdb_scaled.csv"
+# path_day2_transcriptomic_data <- "L:\\basic\\divg\\EXIM\\ImmunoHematology\\Cathy Magnée\\Data\\CD3_HDvsCLL\\Transcriptomic\\day2_RNA_log2_FPKM_cleaned.csv"
 
 
 ```
@@ -70,12 +71,12 @@ Laptop:
 ```{r}
 ############ Paths to load data from Laptop ############ 
 # Day0
-# path_day0_metabolomic_data <- "../ourdata/metabolomic/day0_metabs_hmdb_scaled.csv"
-# path_day0_transcriptomic_data <- "../ourdata/transcriptomic/day0_RNA_log2_FPKM_cleaned.csv"
-# 
-# # Day2
-# path_day2_metabolomic_data <-  "../ourdata/metabolomic/day2_metabs_hmdb_scaled.csv"
-# path_day2_transcriptomic_data <- "../ourdata/transcriptomic/day2_RNA_log2_FPKM_cleaned.csv"
+path_day0_metabolomic_data <- "../ourdata/metabolomic/day0_metabs_hmdb_scaled.csv"
+path_day0_transcriptomic_data <- "../ourdata/transcriptomic/day0_RNA_log2_FPKM_cleaned.csv"
+
+# Day2
+path_day2_metabolomic_data <-  "../ourdata/metabolomic/day2_metabs_hmdb_scaled.csv"
+path_day2_transcriptomic_data <- "../ourdata/transcriptomic/day2_RNA_log2_FPKM_cleaned.csv"
 
 ```
 
@@ -122,15 +123,312 @@ day2_metabolomic <- day2_metabolomic[,c("metabolite",cell_lines)]
 day2_transcriptomic <- day2_transcriptomic[,cell_lines]
 ```
 
-### TF Activity Estimation
-Text
+## TF Activity Estimation
+To estimate TF activity, regulons are needed. Regulons are the TF and their gene expression targets (so what targets are targeted by the TF). For this, the CollecTRI database is the most recent and recommended by Saezlab. 
+
+### Regulon loading and cleaning
+Loading CollecTRI processed regulons from Omnipath
 ```{r}
-# Script
+# Omnipath settings
+collectri_regulons <- get_collectri(organism = 'human', split_complexes = FALSE)
+collectri_regulons <- decoupleR::get_collectri()
+collectri_regulons <- collectri_regulons[!(is.na(collectri_regulons[, 2]) | collectri_regulons[, 2] == ""), ]
+```
+For some reason, using the above df does not work. The one below does, but it needs moer preprocessing. Thus, the following two chunks are the importing and preprocessing of these regulons.
+
+Same CollecTRI regulons, different route:
+```{r}
+
+# Omnipath settings to get collectri regulons
+
+omnipath_set_cachedir('tmpcache')
+omnipath_set_console_loglevel('trace')
+
+# Getting all regulons
+ci <- collectri() # overview
+
+```
+
+This db consists of much more info. Some sources and targets have an stimulating and inhibiting role. For these, the collectri_regulons from the first chunk will be used as a reference. If this dataset shows stimulating (1) this will be copied, and for inhibiting (-1) this will be translated to a 0 (non-activating)
+
+The 0's are then later all changed to -1.
+
+Cleaning up the CollecTRI regulons:
+```{r, message=FALSE}
+
+ci_regulons <- ci[,c(3,4,6)] # only need these columns from overview. These are source, target and stimulates (0 and 1)
+
+colnames(ci_regulons) <- c("source", "target", "mor")
+ci_regulons <- unique(ci_regulons) # remove pure dupes
+
+# Some of the regulons are duplicated with different mor. 
+# This means the same source/target combination has both 0 and 1 options
+# Let's change this. 
+temp <- ci[duplicated(ci[, 3:4]) | duplicated(ci[, 3:4], fromLast = TRUE), ] # all duplicates, also with the same mor values
+duplicates <- anti_join(temp, ci[duplicated(ci[, c(3,4,6)]) | duplicated(ci[, c(3,4,6)], fromLast = TRUE), ]) # only different mor values
+duplicates <- duplicates[,c(3,4,6)]
+colnames(duplicates) <- c("source", "target", "mor")
+duplicates <- unique(duplicates)
+
+# For loop that checks the value of the duplicates in ci_regulons what their values are in collectri_regulons then changes accordingly 
+for(i in 1:nrow(duplicates)){
+  source <- duplicates$source[i]
+  target <- duplicates$target[i]
+  
+  collectri_row <- collectri_regulons %>% 
+    filter(source == !!source & target == !!target)
+  
+  if (nrow(collectri_row) > 0){ # if it is in collectri
+    # check mor value
+    if (collectri_row$mor == -1){
+      ci_regulons <- ci_regulons |>
+        mutate(mor = ifelse(source == !!source & target == !!target, 0 , mor))
+    } else {
+      ci_regulons <- ci_regulons |>
+        mutate(mor = ifelse(source == !!source & target == !!target, 1, mor))
+    }
+  }
+}
+
+ci_regulons <- unique(ci_regulons)
+
+
+# Change inhibition relation to -1 
+ci_regulons$mor[ci_regulons$mor == 0] <- -1
+
+```
+
+Estimating TF activities.
+There are multiple methods available to estimate TF activities. In the original pipeline (Factor cosmos no mofa), the run_wmean function is used. The official source of DecoupleR [1] describes the following three as most consistently better-performing: consensus, multivariate linear model and ULM. 
+
+First, three methods are explored in the following three chunks. Then, the main method, which can be adjusted, is seperately applied to the day0 and day2 gene expression datasets to estimate TF activity.
+
+
+### Method exploration
+For now, methods wmean, Ulm and consensus are exploren. Perhaps MLM will be added later but for now I am lazy. Thanks.
+Each is tested using the day0 gene expression dataset. This can be easily adjusted to be any other (preprocessed) dataset. 
+
+Wmean
+```{r}
+# RNA_scaled <- day0_transcriptomic
+# 
+# day0_TF_activities <- apply(RNA_scaled,2,function(x){
+#                         x <- as.data.frame(x[which(!is.na(x))])
+#                         TFs <- run_wmean(as.matrix(x), 
+#                                          network = unique(ci_regulons), 
+#                                          times = 1000, 
+#                                          minsize = 20)
+#                         TFs <- as.data.frame(TFs)
+#                         TFs <- TFs[which(TFs$statistic == "norm_wmean"),c(2,4)]
+#                         as_input <- TFs[,2]
+#                         names(as_input) <- TFs[,1]
+#                         return(as_input)
+#                         })
+```
+
+ULM
+```{r}
+# RNA_scaled <- day0_transcriptomic
+# 
+# day0_TF_activities <- apply(RNA_scaled,2,function(x){
+#                         x <- as.data.frame(x[which(!is.na(x))]) # no NAs allowed
+#                         TFs <- run_ulm(as.matrix(x), # actual running of TF activity estimation function
+#                                          network = unique(ci_regulons),
+#                                          # times = 1000,
+#                                          minsize = 20)
+#                         TFs <- as.data.frame(TFs) # Reformatting into cosmos input format
+#                         print(head(TFs))
+#                         TFs <- TFs[which(TFs$statistic == "ulm"),c(2,4)]
+#                         as_input <- TFs[,2]
+#                         names(as_input) <- TFs[,1]
+#                         return(as_input)
+#                         })
+```
+
+
+Consensus
+Consensus has a two-step approach, as it does not allow for colinear regulons, these will be filtered out of the PKN before using it as input. 
+1. Adjusting PKN
+```{r}
+
+correlated_regulons <- decoupleR::check_corr(ci_regulons)
+
+correlated_vars <- correlated_regulons |>
+  filter(correlation > 0.5 | correlation < -0.5  ) |>
+  dplyr::select(source, source.2) |>
+  unlist()
+
+ci_regulons_no_cor <- ci_regulons |>
+  filter(!(source %in% correlated_vars | target %in% correlated_vars))
+```
+
+2. Combining new PKN and gene expression data to estimate TF activities
+```{r}
+RNA_scaled <- day0_transcriptomic
+
+day0_TF_activities <- apply(RNA_scaled,2,function(x){
+  x <- as.data.frame(x[which(!is.na(x))])
+  TFs <- decouple(as.matrix(x), # actual running of TF activity estimation function
+                   network = unique(ci_regulons_no_cor), 
+                  # statistics = c("ulm", "mlm", "wmean"),
+                  # args = list(
+                  #   ulm = list(.mor = "mor", .likelihood = "likelihood"),
+                  #   mlm = list(.mor = "mor", .likelihood = "likelihood"),
+                  #   wmean = list(.mor = "mor", .likelihood = "likelihood"))
+                  #   ),
+                   minsize = 20)
+  TFS <- run_consensus(TFs)
+  # print(head(TFs))
+  TFs <- as.data.frame(TFs) # Reformatting into cosmos input format
+  TFs <- TFs[which(TFs$statistic == "consensus"),c(3,5)]
+  # print(head(TFs))
+  as_input <- TFs[,2]
+  # print(head(as_input))
+  names(as_input) <- TFs[,1]
+  # print(head(as_input))
+  return(as_input)
+  })
+```
+
+Note that it is also possible to un-comment the statistics and args arguments in the decouple function to edit the statistical methods that are being weighted in the consensus function. By using the default values, we are using the methods mlm, ulm and wsum. 
+
+Overview available methods:
+<https://decoupler-py.readthedocs.io/en/latest/notebooks/usage.html>
+
+### Applying method
+The consensus method will be applied as this one is described in literature to be the most consistent and best performing [1].
+
+Day0:
+```{r}
+RNA_scaled <- day0_transcriptomic
+
+day0_TF_activities <- apply(RNA_scaled,2,function(x){
+  x <- as.data.frame(x[which(!is.na(x))])
+  TFs <- decouple(as.matrix(x), # actual running of TF activity estimation function
+                   network = unique(ci_regulons_no_cor), 
+                   # times = 1000, 
+                   minsize = 20)
+  TFS <- run_consensus(TFs)
+  # print(head(TFs))
+  TFs <- as.data.frame(TFs) # Reformatting into cosmos input format
+  TFs <- TFs[which(TFs$statistic == "consensus"),c(3,5)]
+  # print(head(TFs))
+  as_input <- TFs[,2]
+  # print(head(as_input))
+  names(as_input) <- TFs[,1]
+  # print(head(as_input))
+  return(as_input)
+  })
+
+```
+
+Day2:
+```{r}
+RNA_scaled <- day2_transcriptomic
+
+day2_TF_activities <- apply(RNA_scaled,2,function(x){
+  x <- as.data.frame(x[which(!is.na(x))])
+  TFs <- decouple(as.matrix(x), # actual running of TF activity estimation function
+                   network = unique(ci_regulons_no_cor), 
+                   # times = 1000, 
+                   minsize = 20)
+  TFS <- run_consensus(TFs)
+  # print(head(TFs))
+  TFs <- as.data.frame(TFs) # Reformatting into cosmos input format
+  TFs <- TFs[which(TFs$statistic == "consensus"),c(3,5)]
+  # print(head(TFs))
+  as_input <- TFs[,2]
+  # print(head(as_input))
+  names(as_input) <- TFs[,1]
+  # print(head(as_input))
+  return(as_input)
+  })
 ```
 
 ### Formatting COSMOS inputs
-Text
+Reformatting gene expression data
+day0
 ```{r}
-# Script
+day0_transcriptomic <- apply(day0_transcriptomic, 2, function(x){
+  return(x[which(!is.na(x))])
+}, simplify = F)
+
+```
+day2
+```{r}
+day2_transcriptomic <- apply(day2_transcriptomic, 2, function(x){
+  return(x[which(!is.na(x))])
+}, simplify = F)
+```
+
+Reformatting Metabolite data:
+day0
+```{r}
+row.names(day0_metabolomic) <- day0_metabolomic$metabolite
+day0_metabolomic <- day0_metabolomic[,-1]
+day0_metabolomic <- apply(day0_metabolomic, 2, function(x){
+  x <- x[which(!is.na(x))]
+  return(x)
+},simplify = F)
+```
+day2
+```{r}
+row.names(day2_metabolomic) <- day2_metabolomic$metabolite
+day2_metabolomic <- day2_metabolomic[,-1]
+day2_metabolomic <- apply(day2_metabolomic, 2, function(x){
+  x <- x[which(!is.na(x))]
+  return(x)
+},simplify = F)
+```
+
+## Cosmos_inputs end product
+
+Day0:
+```{r}
+TF_activities <- day0_TF_activities
+RNA_scaled <- day0_transcriptomic
+metabs_scaled <- day0_metabolomic
+
+
+day0_cosmos_inputs <- sapply(names(TF_activities), function(cell_line, RNA_scaled, metabs_scaled, TF_activities){
+  cosmos_input <- list()
+  cosmos_input[["RNA"]] <- RNA_scaled[[cell_line]]
+  cosmos_input[["metabolomic"]] <- metabs_scaled[[cell_line]]
+  cosmos_input[["TF_scores"]] <- TF_activities[[cell_line]]
+  return(cosmos_input)
+}, RNA_scaled = RNA_scaled, metabs_scaled = metabs_scaled, TF_activities= TF_activities, USE.NAMES = T, simplify = F)
+
+```
+
+Day2:
+```{r}
+TF_activities <- day2_TF_activities
+RNA_scaled <- day2_transcriptomic
+metabs_scaled <- day2_metabolomic
+
+
+day2_cosmos_inputs <- sapply(names(TF_activities), function(cell_line, RNA_scaled, metabs_scaled, TF_activities){
+  cosmos_input <- list()
+  cosmos_input[["RNA"]] <- RNA_scaled[[cell_line]]
+  cosmos_input[["metabolomic"]] <- metabs_scaled[[cell_line]]
+  cosmos_input[["TF_scores"]] <- TF_activities[[cell_line]]
+  return(cosmos_input)
+}, RNA_scaled = RNA_scaled, metabs_scaled = metabs_scaled, TF_activities= TF_activities, USE.NAMES = T, simplify = F)
+
+```
+
+## Saving data
+AMC
+```{r}
+# save(day0_cosmos_inputs, file = "L:\\basic\\divg\\EXIM\\ImmunoHematology\\Cathy Magnée\\Data\\CD3_HDvsCLL\\CosmosR\\day0_cosmos_inputs.RData")
+# save(day2_cosmos_inputs, file = "L:\\basic\\divg\\EXIM\\ImmunoHematology\\Cathy Magnée\\Data\\CD3_HDvsCLL\\CosmosR\\day2_cosmos_inputs.RData")
+
+```
+
+Laptop
+```{r}
+save(day0_cosmos_inputs, file = "../ourdata/cosmos/day0_cosmos_inputs.RData")
+save(day2_cosmos_inputs, file = "../ourdata/cosmos/day2_cosmos_inputs.RData")
+
 ```
 
