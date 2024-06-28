@@ -35,8 +35,8 @@ AMC:
 # day2_path <- "L:\\basic\\divg\\EXIM\\ImmunoHematology\\Cathy Magnée\\Data\\CD3_HDvsCLL\\Metabolomic\\day2_metabs_raw.csv"
 
 # or hmdb?
-# day0_path <- "L:\\basic\\divg\\EXIM\\ImmunoHematology\\Cathy Magnée\\Data\\CD3_HDvsCLL\\Metabolomic\\day0_metabs_hmdb.csv"
-# day2_path <- "L:\\basic\\divg\\EXIM\\ImmunoHematology\\Cathy Magnée\\Data\\CD3_HDvsCLL\\Metabolomic\\day2_metabs_hmdb.csv"
+day0_path <- "L:\\basic\\divg\\EXIM\\ImmunoHematology\\Cathy Magnée\\Data\\CD3_HDvsCLL\\Metabolomic\\day0_metabs_hmdb.csv"
+day2_path <- "L:\\basic\\divg\\EXIM\\ImmunoHematology\\Cathy Magnée\\Data\\CD3_HDvsCLL\\Metabolomic\\day2_metabs_hmdb.csv"
 
 ```
 Laptop:
@@ -45,8 +45,8 @@ Laptop:
 # day2_path <- "../ourdata/metabolomic/day2_metabs_raw.csv"
 
 # or hmdb?
-day0_path <- "../ourdata/metabolomic/day0_metabs_hmdb.csv"
-day2_path <- "../ourdata/metabolomic/day2_metabs_hmdb.csv"
+# day0_path <- "../ourdata/metabolomic/day0_metabs_hmdb.csv"
+# day2_path <- "../ourdata/metabolomic/day2_metabs_hmdb.csv"
 ```
 
 Loading data and removing paths:
@@ -192,14 +192,14 @@ hist(as.numeric(unlist(day2_metabs_scaled)), breaks = 1000)
 AMC
 ```{r}
 ############ Paths to write data to AMC PC ############ 
-# write.csv(day0_metabs_scaled,file = "L:\\basic\\divg\\EXIM\\ImmunoHematology\\Cathy Magnée\\Data\\CD3_HDvsCLL\\Metabolomic\\day0_metabs_hmdb_scaled.csv")
-# write.csv(day2_metabs_scaled,file = "L:\\basic\\divg\\EXIM\\ImmunoHematology\\Cathy Magnée\\Data\\CD3_HDvsCLL\\Metabolomic\\day2_metabs_hmdb_scaled.csv")
+write.csv(day0_metabs_scaled,file = "L:\\basic\\divg\\EXIM\\ImmunoHematology\\Cathy Magnée\\Data\\CD3_HDvsCLL\\Metabolomic\\day0_metabs_hmdb_scaled.csv")
+write.csv(day2_metabs_scaled,file = "L:\\basic\\divg\\EXIM\\ImmunoHematology\\Cathy Magnée\\Data\\CD3_HDvsCLL\\Metabolomic\\day2_metabs_hmdb_scaled.csv")
 ```
 
 Laptop
 ```{r}
 ############ Paths to write data to laptop ############ 
-write.csv(day0_metabs_scaled,file = "../ourdata/metabolomic/day0_metabs_hmdb_scaled.csv")
-write.csv(day2_metabs_scaled,file = "../ourdata/metabolomic/day2_metabs_hmdb_scaled.csv")
+# write.csv(day0_metabs_scaled,file = "../ourdata/metabolomic/day0_metabs_hmdb_scaled.csv")
+# write.csv(day2_metabs_scaled,file = "../ourdata/metabolomic/day2_metabs_hmdb_scaled.csv")
 ```
 

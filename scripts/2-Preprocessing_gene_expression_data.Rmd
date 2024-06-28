@@ -39,16 +39,16 @@ Loading data
 AMC paths:
 ```{r}
 ############ AMC ############  
-# day0_RNA_path <- "L:\\basic\\divg\\EXIM\\ImmunoHematology\\Cathy Magnée\\Data\\CD3_HDvsCLL\\Transcriptomic\\day0_RNA_log2_FPKM.csv"
-# 
-# day2_RNA_path <- "L:\\basic\\divg\\EXIM\\ImmunoHematology\\Cathy Magnée\\Data\\CD3_HDvsCLL\\Transcriptomic\\day2_RNA_log2_FPKM.csv"
+day0_RNA_path <- "L:\\basic\\divg\\EXIM\\ImmunoHematology\\Cathy Magnée\\Data\\CD3_HDvsCLL\\Transcriptomic\\day0_RNA_log2_FPKM.csv"
+
+day2_RNA_path <- "L:\\basic\\divg\\EXIM\\ImmunoHematology\\Cathy Magnée\\Data\\CD3_HDvsCLL\\Transcriptomic\\day2_RNA_log2_FPKM.csv"
 
 ```
 Laptop paths:
 ```{r}
 ############ Laptop ############ 
-day0_RNA_path <- "../ourdata/transcriptomic/day0_RNA_log2_FPKM.csv"
-day2_RNA_path <- "../ourdata/transcriptomic/day2_RNA_log2_FPKM.csv"
+# day0_RNA_path <- "../ourdata/transcriptomic/day0_RNA_log2_FPKM.csv"
+# day2_RNA_path <- "../ourdata/transcriptomic/day2_RNA_log2_FPKM.csv"
 # 
 ## day0_RNA_path <- "../ourdata/transcriptomic/day0_RNA_raw.csv" # Do not use these?
 ## day2_RNA_path <- "../ourdata/transcriptomic/day2_RNA_raw.csv" # We do not use these
@@ -129,8 +129,8 @@ hist(as.numeric(unlist(day2_RNA_log2_FPKM)), breaks = 1000)
 ```
 
 Let's remove all rows (genes) where >20% is NA
-For day0, where there are 10 samples, this means to keep all samples where <8 out of 10 are NA.
-For day2, this means to keep samples where less than 6.4 out of 8 are NA
+For day0, where there are 10 samples, this means to keep all samples where <8 out of 9 are NA. In other words, There need to be at least 2 measurements to keep this one. 
+For day2, this means to keep samples where less than 6.4 out of 8 are NA. In other words, There need to be at least 3 measurements for the gene to not be filtered out
 
 ```{r}
 day0_RNA_log2_FPKM <- day0_RNA_log2_FPKM[rowSums(is.na(day0_RNA_log2_FPKM)) < 0.8*ncol(day0_RNA_log2_FPKM),]
@@ -155,17 +155,30 @@ hist(as.numeric(unlist(day2_RNA_log2_FPKM)), breaks = 1000)
 
 
 ```
+### Scaling data
+```{r}
+day0_RNA_log2_FPKM <- scale_gene_expression_data(day0_RNA_log2_FPKM)
+day2_RNA_log2_FPKM <- scale_gene_expression_data(day2_RNA_log2_FPKM)
+
+```
+
+Exploring the data once more in histogram form
+```{r}
+hist(as.numeric(unlist(day0_RNA_log2_FPKM)), breaks = 1000)
+hist(as.numeric(unlist(day2_RNA_log2_FPKM)), breaks = 1000)
+```
+
 
 ### Saving data
 AMC
 ```{r}
-# write.csv(day0_RNA_log2_FPKM,file = "L:\\basic\\divg\\EXIM\\ImmunoHematology\\Cathy Magnée\\Data\\CD3_HDvsCLL\\Transcriptomic\\day0_RNA_log2_FPKM_cleaned.csv")
-# write.csv(day2_RNA_log2_FPKM,file = "L:\\basic\\divg\\EXIM\\ImmunoHematology\\Cathy Magnée\\Data\\CD3_HDvsCLL\\Transcriptomic\\day2_RNA_log2_FPKM_cleaned.csv")
+write.csv(day0_RNA_log2_FPKM,file = "L:\\basic\\divg\\EXIM\\ImmunoHematology\\Cathy Magnée\\Data\\CD3_HDvsCLL\\Transcriptomic\\day0_RNA_log2_FPKM_cleaned.csv")
+write.csv(day2_RNA_log2_FPKM,file = "L:\\basic\\divg\\EXIM\\ImmunoHematology\\Cathy Magnée\\Data\\CD3_HDvsCLL\\Transcriptomic\\day2_RNA_log2_FPKM_cleaned.csv")
 ```
 
 Laptop
 ```{r}
-write.csv(day0_RNA_log2_FPKM,file = "../ourdata/transcriptomic/day0_RNA_log2_FPKM_cleaned.csv")
-write.csv(day2_RNA_log2_FPKM,file = "../ourdata/transcriptomic/day2_RNA_log2_FPKM_cleaned.csv")
+# write.csv(day0_RNA_log2_FPKM,file = "../ourdata/transcriptomic/day0_RNA_log2_FPKM_cleaned.csv")
+# write.csv(day2_RNA_log2_FPKM,file = "../ourdata/transcriptomic/day2_RNA_log2_FPKM_cleaned.csv")
 ```
 

@@ -57,12 +57,12 @@ AMC:
 ```{r}
 ############ Paths to load data from AMC PC ############ 
 # Day0
-# path_day0_metabolomic_data <- "L:\\basic\\divg\\EXIM\\ImmunoHematology\\Cathy Magnée\\Data\\CD3_HDvsCLL\\Metabolomic\\day0_metabs_hmdb_scaled.csv"
-# path_day0_transcriptomic_data <- "L:\\basic\\divg\\EXIM\\ImmunoHematology\\Cathy Magnée\\Data\\CD3_HDvsCLL\\Transcriptomic\\day0_RNA_log2_FPKM_cleaned.csv"
-# 
-# #Day2
-# path_day2_metabolomic_data <- "L:\\basic\\divg\\EXIM\\ImmunoHematology\\Cathy Magnée\\Data\\CD3_HDvsCLL\\Metabolomic\\day2_metabs_hmdb_scaled.csv"
-# path_day2_transcriptomic_data <- "L:\\basic\\divg\\EXIM\\ImmunoHematology\\Cathy Magnée\\Data\\CD3_HDvsCLL\\Transcriptomic\\day2_RNA_log2_FPKM_cleaned.csv"
+path_day0_metabolomic_data <- "L:\\basic\\divg\\EXIM\\ImmunoHematology\\Cathy Magnée\\Data\\CD3_HDvsCLL\\Metabolomic\\day0_metabs_hmdb_scaled.csv"
+path_day0_transcriptomic_data <- "L:\\basic\\divg\\EXIM\\ImmunoHematology\\Cathy Magnée\\Data\\CD3_HDvsCLL\\Transcriptomic\\day0_RNA_log2_FPKM_cleaned.csv"
+
+#Day2
+path_day2_metabolomic_data <- "L:\\basic\\divg\\EXIM\\ImmunoHematology\\Cathy Magnée\\Data\\CD3_HDvsCLL\\Metabolomic\\day2_metabs_hmdb_scaled.csv"
+path_day2_transcriptomic_data <- "L:\\basic\\divg\\EXIM\\ImmunoHematology\\Cathy Magnée\\Data\\CD3_HDvsCLL\\Transcriptomic\\day2_RNA_log2_FPKM_cleaned.csv"
 
 
 ```
@@ -71,17 +71,17 @@ Laptop:
 ```{r}
 ############ Paths to load data from Laptop ############ 
 # Day0
-path_day0_metabolomic_data <- "../ourdata/metabolomic/day0_metabs_hmdb_scaled.csv"
-path_day0_transcriptomic_data <- "../ourdata/transcriptomic/day0_RNA_log2_FPKM_cleaned.csv"
-
-# Day2
-path_day2_metabolomic_data <-  "../ourdata/metabolomic/day2_metabs_hmdb_scaled.csv"
-path_day2_transcriptomic_data <- "../ourdata/transcriptomic/day2_RNA_log2_FPKM_cleaned.csv"
+# path_day0_metabolomic_data <- "../ourdata/metabolomic/day0_metabs_hmdb_scaled.csv"
+# path_day0_transcriptomic_data <- "../ourdata/transcriptomic/day0_RNA_log2_FPKM_cleaned.csv"
+# 
+# # Day2
+# path_day2_metabolomic_data <-  "../ourdata/metabolomic/day2_metabs_hmdb_scaled.csv"
+# path_day2_transcriptomic_data <- "../ourdata/transcriptomic/day2_RNA_log2_FPKM_cleaned.csv"
 
 ```
 
 Loading data and removing paths:
-```{r}
+```{r, message=FALSE, warning=FALSE}
 day0_metabolomic <- as.data.frame(read_csv(path_day0_metabolomic_data))
 names(day0_metabolomic)[names(day0_metabolomic) == "...1"] <- "metabolite"
 
@@ -109,18 +109,20 @@ First, we want to make sure we have a complete gene expression and metabolomic d
 We will test this by intersecting the column names of both dataframes and using only these column names for both.
 Day 0:
 ```{r}
-cell_lines <- intersect(names(day0_metabolomic),names(day0_transcriptomic))
+# intersect so only HD and CLL patients available in both datasets are used
+samples <- intersect(names(day0_metabolomic),names(day0_transcriptomic)) 
 
-day0_metabolomic <- day0_metabolomic[,c("metabolite",cell_lines)]
-day0_transcriptomic <- day0_transcriptomic[,cell_lines]
+day0_metabolomic <- day0_metabolomic[,c("metabolite",samples)]
+day0_transcriptomic <- day0_transcriptomic[,samples]
 ```
 
 Day 2:
 ```{r}
-cell_lines <- intersect(names(day2_metabolomic),names(day2_transcriptomic))
+# intersect so only HD and CLL patients available in both datasets are used
+samples <- intersect(names(day2_metabolomic),names(day2_transcriptomic))
 
-day2_metabolomic <- day2_metabolomic[,c("metabolite",cell_lines)]
-day2_transcriptomic <- day2_transcriptomic[,cell_lines]
+day2_metabolomic <- day2_metabolomic[,c("metabolite",samples)]
+day2_transcriptomic <- day2_transcriptomic[,samples]
 ```
 
 ## TF Activity Estimation
@@ -128,7 +130,7 @@ To estimate TF activity, regulons are needed. Regulons are the TF and their gene
 
 ### Regulon loading and cleaning
 Loading CollecTRI processed regulons from Omnipath
-```{r}
+```{r, message=FALSE, warning= FALSE}
 # Omnipath settings
 collectri_regulons <- get_collectri(organism = 'human', split_complexes = FALSE)
 collectri_regulons <- decoupleR::get_collectri()
@@ -137,7 +139,7 @@ collectri_regulons <- collectri_regulons[!(is.na(collectri_regulons[, 2]) | coll
 For some reason, using the above df does not work. The one below does, but it needs moer preprocessing. Thus, the following two chunks are the importing and preprocessing of these regulons.
 
 Same CollecTRI regulons, different route:
-```{r}
+```{r, message=FALSE, warning= FALSE}
 
 # Omnipath settings to get collectri regulons
 
@@ -205,7 +207,7 @@ First, three methods are explored in the following three chunks. Then, the main 
 
 
 ### Method exploration
-For now, methods wmean, Ulm and consensus are exploren. Perhaps MLM will be added later but for now I am lazy. Thanks.
+For now, methods wmean, Ulm, mlm and consensus are explored.
 Each is tested using the day0 gene expression dataset. This can be easily adjusted to be any other (preprocessed) dataset. 
 
 Wmean
@@ -214,9 +216,9 @@ Wmean
 # 
 # day0_TF_activities <- apply(RNA_scaled,2,function(x){
 #                         x <- as.data.frame(x[which(!is.na(x))])
-#                         TFs <- run_wmean(as.matrix(x), 
-#                                          network = unique(ci_regulons), 
-#                                          times = 1000, 
+#                         TFs <- run_wmean(as.matrix(x),
+#                                          network = unique(ci_regulons),
+#                                          times = 1000,
 #                                          minsize = 20)
 #                         TFs <- as.data.frame(TFs)
 #                         TFs <- TFs[which(TFs$statistic == "norm_wmean"),c(2,4)]
@@ -246,11 +248,81 @@ ULM
 ```
 
 
+
+
 Consensus
-Consensus has a two-step approach, as it does not allow for colinear regulons, these will be filtered out of the PKN before using it as input. 
+Consensus and MLM both have a two-step approach, as it does not allow for colinear regulons, these will be filtered out of the PKN before using it as input. 
 1. Adjusting PKN
 ```{r}
 
+# correlated_regulons <- decoupleR::check_corr(ci_regulons)
+# 
+# correlated_vars <- correlated_regulons |>
+#   filter(correlation > 0.5 | correlation < -0.5  ) |>
+#   dplyr::select(source, source.2) |>
+#   unlist()
+# 
+# ci_regulons_no_cor <- ci_regulons |>
+#   filter(!(source %in% correlated_vars | target %in% correlated_vars))
+```
+
+2. Combining new PKN and gene expression data to estimate TF activities
+```{r}
+# RNA_scaled <- day0_transcriptomic
+# 
+# day0_TF_activities <- apply(RNA_scaled,2,function(x){
+#   x <- as.data.frame(x[which(!is.na(x))])
+#   TFs <- decouple(as.matrix(x), # actual running of TF activity estimation function
+#                    network = unique(ci_regulons_no_cor), 
+#                   # statistics = c("ulm", "mlm", "wmean"),
+#                   # args = list(
+#                   #   ulm = list(.mor = "mor", .likelihood = "likelihood"),
+#                   #   mlm = list(.mor = "mor", .likelihood = "likelihood"),
+#                   #   wmean = list(.mor = "mor", .likelihood = "likelihood"))
+#                   #   ),
+#                    minsize = 20)
+#   TFS <- run_consensus(TFs)
+#   # print(head(TFs))
+#   TFs <- as.data.frame(TFs) # Reformatting into cosmos input format
+#   TFs <- TFs[which(TFs$statistic == "consensus"),c(3,5)]
+#   # print(head(TFs))
+#   as_input <- TFs[,2]
+#   # print(head(as_input))
+#   names(as_input) <- TFs[,1]
+#   # print(head(as_input))
+#   return(as_input)
+#   })
+```
+
+Note that it is also possible to un-comment the statistics and args arguments in the decouple function to edit the statistical methods that are being weighted in the consensus function. By using the default values, we are using the methods mlm, ulm and wsum. 
+
+Overview available methods:
+<https://decoupler-py.readthedocs.io/en/latest/notebooks/usage.html>
+
+MLM
+```{r}
+# RNA_scaled <- day0_transcriptomic
+# 
+# day0_TF_activities <- apply(RNA_scaled,2,function(x){
+#                         x <- as.data.frame(x[which(!is.na(x))]) # no NAs allowed
+#                         TFs <- run_mlm(as.matrix(x), # actual running of TF activity estimation function
+#                                          network = unique(ci_regulons_no_cor),
+#                                          # times = 1000,
+#                                          minsize = 20)
+#                         TFs <- as.data.frame(TFs) # Reformatting into cosmos input format
+#                         TFs <- TFs[which(TFs$statistic == "mlm"),c(2,4)]
+#                         as_input <- TFs[,2]
+#                         names(as_input) <- TFs[,1]
+#                         return(as_input)
+#                         })
+```
+
+
+### Applying method
+The consensus method will be applied as this one is described in literature to be the most consistent and best performing [1].
+
+Preprocessing step:
+```{r}
 correlated_regulons <- decoupleR::check_corr(ci_regulons)
 
 correlated_vars <- correlated_regulons |>
@@ -262,20 +334,15 @@ ci_regulons_no_cor <- ci_regulons |>
   filter(!(source %in% correlated_vars | target %in% correlated_vars))
 ```
 
-2. Combining new PKN and gene expression data to estimate TF activities
+T0:
 ```{r}
 RNA_scaled <- day0_transcriptomic
 
 day0_TF_activities <- apply(RNA_scaled,2,function(x){
   x <- as.data.frame(x[which(!is.na(x))])
   TFs <- decouple(as.matrix(x), # actual running of TF activity estimation function
-                   network = unique(ci_regulons_no_cor), 
-                  # statistics = c("ulm", "mlm", "wmean"),
-                  # args = list(
-                  #   ulm = list(.mor = "mor", .likelihood = "likelihood"),
-                  #   mlm = list(.mor = "mor", .likelihood = "likelihood"),
-                  #   wmean = list(.mor = "mor", .likelihood = "likelihood"))
-                  #   ),
+                   network = unique(ci_regulons_no_cor),
+                   # times = 1000,
                    minsize = 20)
   TFS <- run_consensus(TFs)
   # print(head(TFs))
@@ -287,50 +354,19 @@ day0_TF_activities <- apply(RNA_scaled,2,function(x){
   names(as_input) <- TFs[,1]
   # print(head(as_input))
   return(as_input)
-  })
-```
-
-Note that it is also possible to un-comment the statistics and args arguments in the decouple function to edit the statistical methods that are being weighted in the consensus function. By using the default values, we are using the methods mlm, ulm and wsum. 
-
-Overview available methods:
-<https://decoupler-py.readthedocs.io/en/latest/notebooks/usage.html>
-
-### Applying method
-The consensus method will be applied as this one is described in literature to be the most consistent and best performing [1].
-
-Day0:
-```{r}
-RNA_scaled <- day0_transcriptomic
-
-day0_TF_activities <- apply(RNA_scaled,2,function(x){
-  x <- as.data.frame(x[which(!is.na(x))])
-  TFs <- decouple(as.matrix(x), # actual running of TF activity estimation function
-                   network = unique(ci_regulons_no_cor), 
-                   # times = 1000, 
-                   minsize = 20)
-  TFS <- run_consensus(TFs)
-  # print(head(TFs))
-  TFs <- as.data.frame(TFs) # Reformatting into cosmos input format
-  TFs <- TFs[which(TFs$statistic == "consensus"),c(3,5)]
-  # print(head(TFs))
-  as_input <- TFs[,2]
-  # print(head(as_input))
-  names(as_input) <- TFs[,1]
-  # print(head(as_input))
-  return(as_input)
-  })
+})
 
 ```
 
-Day2:
+T48:
 ```{r}
 RNA_scaled <- day2_transcriptomic
 
 day2_TF_activities <- apply(RNA_scaled,2,function(x){
   x <- as.data.frame(x[which(!is.na(x))])
   TFs <- decouple(as.matrix(x), # actual running of TF activity estimation function
-                   network = unique(ci_regulons_no_cor), 
-                   # times = 1000, 
+                   network = unique(ci_regulons_no_cor),
+                   # times = 1000,
                    minsize = 20)
   TFS <- run_consensus(TFs)
   # print(head(TFs))
@@ -344,6 +380,116 @@ day2_TF_activities <- apply(RNA_scaled,2,function(x){
   return(as_input)
   })
 ```
+
+Wmean is used in the Factor_no COSMOS pipeline, so I want to try that too:
+T0:
+```{r}
+# RNA_scaled <- day0_transcriptomic
+# 
+# day0_TF_activities <- apply(RNA_scaled,2,function(x){
+#                         x <- as.data.frame(x[which(!is.na(x))])
+#                         TFs <- run_wmean(as.matrix(x),
+#                                          network = unique(ci_regulons),
+#                                          times = 1000,
+#                                          minsize = 20)
+#                         TFs <- as.data.frame(TFs)
+#                         TFs <- TFs[which(TFs$statistic == "norm_wmean"),c(2,4)]
+#                         as_input <- TFs[,2]
+#                         names(as_input) <- TFs[,1]
+#                         return(as_input)
+#                         })
+```
+
+T48:
+```{r}
+# RNA_scaled <- day2_transcriptomic
+# 
+# day2_TF_activities <- apply(RNA_scaled,2,function(x){
+#                         x <- as.data.frame(x[which(!is.na(x))])
+#                         TFs <- run_wmean(as.matrix(x),
+#                                          network = unique(ci_regulons),
+#                                          times = 1000,
+#                                          minsize = 20)
+#                         TFs <- as.data.frame(TFs)
+#                         TFs <- TFs[which(TFs$statistic == "norm_wmean"),c(2,4)]
+#                         as_input <- TFs[,2]
+#                         names(as_input) <- TFs[,1]
+#                         return(as_input)
+#                         })
+```
+
+#### ULM
+T0
+```{r}
+# RNA_scaled <- day0_transcriptomic
+# 
+# day0_TF_activities <- apply(RNA_scaled,2,function(x){
+#                         x <- as.data.frame(x[which(!is.na(x))]) # no NAs allowed
+#                         TFs <- run_ulm(as.matrix(x), # actual running of TF activity estimation function
+#                                          network = unique(ci_regulons),
+#                                          # times = 1000,
+#                                          minsize = 20)
+#                         TFs <- as.data.frame(TFs) # Reformatting into cosmos input format
+#                         TFs <- TFs[which(TFs$statistic == "ulm"),c(2,4)]
+#                         as_input <- TFs[,2]
+#                         names(as_input) <- TFs[,1]
+#                         return(as_input)
+#                         })
+```
+T48
+```{r}
+# RNA_scaled <- day2_transcriptomic
+# 
+# day2_TF_activities <- apply(RNA_scaled,2,function(x){
+#                         x <- as.data.frame(x[which(!is.na(x))]) # no NAs allowed
+#                         TFs <- run_ulm(as.matrix(x), # actual running of TF activity estimation function
+#                                          network = unique(ci_regulons),
+#                                          # times = 1000,
+#                                          minsize = 20)
+#                         TFs <- as.data.frame(TFs) # Reformatting into cosmos input format
+#                         TFs <- TFs[which(TFs$statistic == "ulm"),c(2,4)]
+#                         as_input <- TFs[,2]
+#                         names(as_input) <- TFs[,1]
+#                         return(as_input)
+#                         })
+```
+
+#### MLM
+T0
+```{r}
+# RNA_scaled <- day0_transcriptomic
+# 
+# day0_TF_activities <- apply(RNA_scaled,2,function(x){
+#                         x <- as.data.frame(x[which(!is.na(x))]) # no NAs allowed
+#                         TFs <- run_mlm(as.matrix(x), # actual running of TF activity estimation function
+#                                          network = unique(ci_regulons_no_cor),
+#                                          # times = 1000,
+#                                          minsize = 20)
+#                         TFs <- as.data.frame(TFs) # Reformatting into cosmos input format
+#                         TFs <- TFs[which(TFs$statistic == "mlm"),c(2,4)]
+#                         as_input <- TFs[,2]
+#                         names(as_input) <- TFs[,1]
+#                         return(as_input)
+#                         })
+```
+T48
+```{r}
+# RNA_scaled <- day2_transcriptomic
+# 
+# day2_TF_activities <- apply(RNA_scaled,2,function(x){
+#                         x <- as.data.frame(x[which(!is.na(x))]) # no NAs allowed
+#                         TFs <- run_mlm(as.matrix(x), # actual running of TF activity estimation function
+#                                          network = unique(ci_regulons_no_cor),
+#                                          # times = 1000,
+#                                          minsize = 20)
+#                         TFs <- as.data.frame(TFs) # Reformatting into cosmos input format
+#                         TFs <- TFs[which(TFs$statistic == "mlm"),c(2,4)]
+#                         as_input <- TFs[,2]
+#                         names(as_input) <- TFs[,1]
+#                         return(as_input)
+#                         })
+```
+
 
 ### Formatting COSMOS inputs
 Reformatting gene expression data
@@ -383,7 +529,7 @@ day2_metabolomic <- apply(day2_metabolomic, 2, function(x){
 
 ## Cosmos_inputs end product
 
-Day0:
+T0:
 ```{r}
 TF_activities <- day0_TF_activities
 RNA_scaled <- day0_transcriptomic
@@ -400,7 +546,7 @@ day0_cosmos_inputs <- sapply(names(TF_activities), function(cell_line, RNA_scale
 
 ```
 
-Day2:
+T48:
 ```{r}
 TF_activities <- day2_TF_activities
 RNA_scaled <- day2_transcriptomic
@@ -420,15 +566,15 @@ day2_cosmos_inputs <- sapply(names(TF_activities), function(cell_line, RNA_scale
 ## Saving data
 AMC
 ```{r}
-# save(day0_cosmos_inputs, file = "L:\\basic\\divg\\EXIM\\ImmunoHematology\\Cathy Magnée\\Data\\CD3_HDvsCLL\\CosmosR\\day0_cosmos_inputs.RData")
-# save(day2_cosmos_inputs, file = "L:\\basic\\divg\\EXIM\\ImmunoHematology\\Cathy Magnée\\Data\\CD3_HDvsCLL\\CosmosR\\day2_cosmos_inputs.RData")
+save(day0_cosmos_inputs, file = "L:\\basic\\divg\\EXIM\\ImmunoHematology\\Cathy Magnée\\Data\\CD3_HDvsCLL\\CosmosR\\day0_cosmos_inputs.RData")
+save(day2_cosmos_inputs, file = "L:\\basic\\divg\\EXIM\\ImmunoHematology\\Cathy Magnée\\Data\\CD3_HDvsCLL\\CosmosR\\day2_cosmos_inputs.RData")
 
 ```
 
 Laptop
 ```{r}
-save(day0_cosmos_inputs, file = "../ourdata/cosmos/day0_cosmos_inputs.RData")
-save(day2_cosmos_inputs, file = "../ourdata/cosmos/day2_cosmos_inputs.RData")
+# save(day0_cosmos_inputs, file = "../ourdata/cosmos/day0_cosmos_inputs.RData")
+# save(day2_cosmos_inputs, file = "../ourdata/cosmos/day2_cosmos_inputs.RData")
 
 ```
 
