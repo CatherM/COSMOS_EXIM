@@ -38,14 +38,14 @@ library(dplyr)
 Data path::
 AMC:
 ```{r}
-# day0_input_path <- ""
-# day2_input_path <- ""
+day0_input_path <- "L:\\basic\\divg\\EXIM\\ImmunoHematology\\Cathy Magnée\\Data\\CD3_HDvsCLL\\CosmosR\\day0_cosmos_inputs.RData"
+day2_input_path <- "L:\\basic\\divg\\EXIM\\ImmunoHematology\\Cathy Magnée\\Data\\CD3_HDvsCLL\\CosmosR\\day2_cosmos_inputs.RData"
 ```
 
 Laptop:
 ```{r}
-day0_input_path <- "../ourdata/cosmos/day0_cosmos_inputs.RData"
-day2_input_path <- "../ourdata/cosmos/day2_cosmos_inputs.RData"
+# day0_input_path <- "../ourdata/cosmos/day0_cosmos_inputs.RData"
+# day2_input_path <- "../ourdata/cosmos/day2_cosmos_inputs.RData"
 ```
 
 Loading data:
@@ -66,19 +66,54 @@ Dataset and patient
 cosmos_inputs <- day0_cosmos_inputs # Day 0 or Day 2
 names(cosmos_inputs)
 
-patient <- "CLL2783_T0" # Pick a person for who you want to make the network
+patient <- "HD94_T0" # Pick a person for who you want to make the network
 
 sig_input <- cosmos_inputs[[patient]]$TF_scores
 metab_input <- cosmos_inputs[[patient]]$metabolomic 
 RNA_input <- cosmos_inputs[[patient]]$RNA
+
+max_depth <- 7
+
+seconds_per_step <- 64800 # 18 * 3600 seconds, which is the full weekend hopefully. 
+```
+
+The chunk below calculates how many signalling inputs and metabolic inputs are left after filtering for each patients. 
+```{r}
+# ## Trash chunk please consider removing later
+# cosmos_inputs <- day0_cosmos_inputs # Day 0 or Day 2
+# 
+# inputs <- data.frame()
+# 
+# for (patient in names(cosmos_inputs)){
+#   sig_input <- cosmos_inputs[[patient]]$TF_scores
+#   metab_input <- cosmos_inputs[[patient]]$metabolomic
+#   RNA_input <- cosmos_inputs[[patient]]$RNA
+#   metab_input <- prepare_metab_inputs(metab_input, c("c","m"))
+#   sig_input <- sig_input[abs(sig_input) > 2]
+#   metab_input <- metab_input[abs(metab_input) > 2]
+#   metab_input <- cosmosR:::filter_input_nodes_not_in_pkn(metab_input, meta_network)
+#   sig_input <- cosmosR:::filter_input_nodes_not_in_pkn(sig_input, meta_network)
+#   new_row <- list(
+#     patient = patient,
+#     n_sig_inpul = length(sig_input),
+#     n_metab_input = length(metab_input)
+#   )
+#   inputs <- rbind(inputs, new_row)
+# }
+
 ```
 
 Metabolites:
 Choose which compartment to assign to the metabolic measurements:
-Possible values are "r", "c", "e", "x", "m", "l", "n" and "g". More info
-here <http://bigg.ucsd.edu/compartments> "r", endoplasmic reticulum "c",
-cytosol "e", extracellular space "x", peroxisome / glyoxysome "m",
-mitochondria "l", lysosome "n", nucleus "g", golgi apparatus
+Possible values are "r", "c", "e", "x", "m", "l", "n" and "g". More info here <http://bigg.ucsd.edu/compartments>
+"r", endoplasmic reticulum 
+"c",cytosol 
+"e", extracellular space 
+"x", peroxisome / glyoxysome 
+"m", mitochondria 
+"l", lysosome 
+"n", nucleus 
+"g", golgi apparatus
 
 ```{r}
 #Choose which compartment to assign to the metabolic measurments
@@ -115,29 +150,29 @@ my_options <- default_CARNIVAL_options(solver = "cplex")
 my_options$solverPath <- "C:/Program Files/IBM/ILOG/CPLEX_Studio2211/cplex/bin/x64_win64"
 
 # Change this for your folder. This worked for me, the other options (commented out below) dit not.
-# my_options$workdir <- "C:/Users/cmagnee/Documents/cplex"
-# my_options$outputFolder <- "C:/Users/cmagnee/Documents/cplex"
+my_options$workdir <- "C:/Users/cmagnee/Documents/cplex"
+my_options$outputFolder <- "C:/Users/cmagnee/Documents/cplex"
 
 # my_options$workdir <- "H:/COSMOS_EXIM/cplex"
 # my_options$outputFolder <- "H:/COSMOS_EXIM/cplex"
 
-my_options$workdir <- file.path(getwd(), "cplex")
-my_options$outputFolder <- file.path(getwd(), "cplex")
+# my_options$workdir <- file.path(getwd(), "cplex")
+# my_options$outputFolder <- file.path(getwd(), "cplex")
 
 my_options$solver <- "cplex" #or cbc
 
-max_depth <- 5
-
-seconds_per_step <- 3600/10
+# max_depth <- 10
+# 
+# seconds_per_step <- 3600/5
 # my_options$solver <- "cbc"
 my_options$timelimit <- seconds_per_step
 my_options$mipGAP <- 0.05
 
 # amc computer
-# my_options$threads <- 18
+my_options$threads <- 18
 
 # laptop
-my_options$threads <- 6
+# my_options$threads <- 6
 ```
 
 Note: You need IBM Cplex for this, your location may be different from
@@ -150,6 +185,7 @@ metab_input <- cosmosR:::filter_input_nodes_not_in_pkn(metab_input, meta_network
 sig_input <- cosmosR:::filter_input_nodes_not_in_pkn(sig_input, meta_network)
 
 ```
+
 ```{r}
 test_for <- preprocess_COSMOS_signaling_to_metabolism(meta_network = meta_network[,c(1,3,2)],
                                                       signaling_data = sig_input,
@@ -199,7 +235,7 @@ test_back <- preprocess_COSMOS_metabolism_to_signaling(meta_network = meta_netwo
                                                       signaling_data = sig_input,
                                                       metabolic_data = metab_input,
                                                       diff_expression_data = RNA_input,
-                                                      maximum_network_depth = max_depth+1,
+                                                      maximum_network_depth = max_depth,
                                                       remove_unexpressed_nodes = TRUE,
                                                       filter_tf_gene_interaction_by_optimization = TRUE,
                                                       CARNIVAL_options = my_options)
