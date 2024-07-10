@@ -11,13 +11,19 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ## Preprocessing T cell transcriptomics data
 
-This document describes the preprocessing of transcriptomic and metabolomic T cell data. It is based off the preprocessing documents in the FACTOR_Cosmos No_MOFA branch by Saezlab on github. This document is preceded by the 1 - Preparing omics data.Rmd document and precedes the 3 - PReprocessing metabolite R markdown document. 
+This document describes the preprocessing of transcriptomic T cell data of CLL patients (CLL) and healthy donors (HD) at two timepoints, namely unstimulated (T0) and 2 days after stimulation (T48).
+The preprocessing based on the preprocessing documents in the FACTOR_Cosmos No_MOFA branch by Saezlab on github. This document is preceded by the 1 - Preparing omics data.Rmd document and precedes the 3 - Preprocessing metabolite data R markdown document. 
 
-This document is annotated to explain the steps and the choices that were made durnig this project. Other options will be highlighted.
+This document is annotated to explain the steps and the choices that were made durnig this project. Other options will be highlighted. 
+
+Document summary:
+The main goal of this document is to transform the FPKM gene expression data into data from which a network can be built, for which the networks can be compared across samples. This will be done in the following steps and using the following tools:
+1. Data filtering (Removing < 1 and genes with too many NA's (>20%) )
+2. Data scaling using Z-score normalization.  
 
 ### Loading libraries
-Installing packages (if you have not yet)
 
+Installing packages (uncomment if these are not installed yet)
 ```{r}
 # if (!require("BiocManager", quietly = TRUE))
 #     install.packages("BiocManager")
@@ -39,36 +45,37 @@ Loading data
 AMC paths:
 ```{r}
 ############ AMC ############  
-day0_RNA_path <- "L:\\basic\\divg\\EXIM\\ImmunoHematology\\Cathy Magnée\\Data\\CD3_HDvsCLL\\Transcriptomic\\day0_RNA_log2_FPKM.csv"
+T0_RNA_path <- "L:\\basic\\divg\\EXIM\\ImmunoHematology\\Cathy Magnée\\Data\\CD3_HDvsCLL\\Transcriptomic\\T0_RNA_log2_FPKM.csv"
 
-day2_RNA_path <- "L:\\basic\\divg\\EXIM\\ImmunoHematology\\Cathy Magnée\\Data\\CD3_HDvsCLL\\Transcriptomic\\day2_RNA_log2_FPKM.csv"
+T48_RNA_path <- "L:\\basic\\divg\\EXIM\\ImmunoHematology\\Cathy Magnée\\Data\\CD3_HDvsCLL\\Transcriptomic\\T48_RNA_log2_FPKM.csv"
 
 ```
 Laptop paths:
 ```{r}
 ############ Laptop ############ 
-# day0_RNA_path <- "../ourdata/transcriptomic/day0_RNA_log2_FPKM.csv"
-# day2_RNA_path <- "../ourdata/transcriptomic/day2_RNA_log2_FPKM.csv"
+# T0_RNA_path <- "../ourdata/transcriptomic/T0_RNA_log2_FPKM.csv"
+# T48_RNA_path <- "../ourdata/transcriptomic/T48_RNA_log2_FPKM.csv"
 # 
-## day0_RNA_path <- "../ourdata/transcriptomic/day0_RNA_raw.csv" # Do not use these?
-## day2_RNA_path <- "../ourdata/transcriptomic/day2_RNA_raw.csv" # We do not use these
+## T0_RNA_path <- "../ourdata/transcriptomic/T0_RNA_raw.csv" # Do not use these?
+## T48_RNA_path <- "../ourdata/transcriptomic/T48_RNA_raw.csv" # We do not use these
 
 ```
 
+Loading data:
 ```{r}
 
 # Loading data
-day0_RNA_log2_FPKM <- as.data.frame(read_csv(day0_RNA_path))
+T0_RNA_log2_FPKM <- as.data.frame(read_csv(T0_RNA_path))
 
-day2_RNA_log2_FPKM <- as.data.frame(read_csv(day2_RNA_path))
+T48_RNA_log2_FPKM <- as.data.frame(read_csv(T48_RNA_path))
 
 # Change first column to rownames
-day0_RNA_log2_FPKM <- tibble::column_to_rownames(day0_RNA_log2_FPKM, var = "...1")
-day2_RNA_log2_FPKM <- tibble::column_to_rownames(day2_RNA_log2_FPKM, var = "...1")
+T0_RNA_log2_FPKM <- tibble::column_to_rownames(T0_RNA_log2_FPKM, var = "...1")
+T48_RNA_log2_FPKM <- tibble::column_to_rownames(T48_RNA_log2_FPKM, var = "...1")
 
 # Remove redundant variables
-rm(day0_RNA_path)
-rm(day2_RNA_path)
+rm(T0_RNA_path)
+rm(T48_RNA_path)
 
 ```
 
@@ -85,25 +92,32 @@ clean_gene_expression_data <- function(RNA_log2_FPKM) {
 }
 
 # Scaling function
-scale_gene_expression_data <- function(RNA_log2_FPKM_cleaned) {
+scale_gene_expression_data <- function(x) {
   # Grab Standard Deviation
-  SDs <- apply(RNA_log2_FPKM_cleaned,1,function(x){sd(x,na.rm = T)})
+  SDs <- apply(x,1,function(x){sd(x,na.rm = T)})
   # Grab mean
-  means <- rowMeans(RNA_log2_FPKM_cleaned, na.rm = T)
+  means <- rowMeans(x, na.rm = T)
   # Z-normalization 
-  RNA_log2_FPKM_cleaned <- (RNA_log2_FPKM_cleaned - means) / SDs
+  x <- (x - means) / SDs
+  return(x)
 }
+
+zscore <- function(x){
+  z <- (x - mean(x, na.rm = T)) / sd(x, na.rm = T)
+  return(z)
+}
+
 ```
 
 ```{r}
-# hist(as.numeric(unlist(day0_RNA_log2_FPKM)), breaks = 1000)
-# day0_RNA_log2_FPKM_cleaned <- clean_gene_expression_data(day0_RNA_log2_FPKM)
-# hist(as.numeric(unlist(day0_RNA_log2_FPKM_cleaned)), breaks = 1000)
+# hist(as.numeric(unlist(T0_RNA_log2_FPKM)), breaks = 1000)
+# T0_RNA_log2_FPKM_cleaned <- clean_gene_expression_data(T0_RNA_log2_FPKM)
+# hist(as.numeric(unlist(T0_RNA_log2_FPKM_cleaned)), breaks = 1000)
 # 
-# day0_RNA_log2_FPKM_cleaned <- scale_gene_expression_data(day0_RNA_log2_FPKM_cleaned)
-# hist(as.numeric(unlist(day0_RNA_log2_FPKM_cleaned[,c(1:8)])), breaks = 1000)
-# hist(as.numeric(unlist(day0_RNA_log2_FPKM_cleaned[,c(1:4)])), breaks = 1000)
-# hist(as.numeric(unlist(day0_RNA_log2_FPKM_cleaned[,c(5:8)])), breaks = 1000)
+# T0_RNA_log2_FPKM_cleaned <- scale_gene_expression_data(T0_RNA_log2_FPKM_cleaned)
+# hist(as.numeric(unlist(T0_RNA_log2_FPKM_cleaned[,c(1:8)])), breaks = 1000)
+# hist(as.numeric(unlist(T0_RNA_log2_FPKM_cleaned[,c(1:4)])), breaks = 1000)
+# hist(as.numeric(unlist(T0_RNA_log2_FPKM_cleaned[,c(5:8)])), breaks = 1000)
 
 ```
 
@@ -112,8 +126,8 @@ scale_gene_expression_data <- function(RNA_log2_FPKM_cleaned) {
 
 Day 0
 ```{r}
-hist(as.numeric(unlist(day0_RNA_log2_FPKM)), breaks = 1000)
-hist(as.numeric(unlist(day2_RNA_log2_FPKM)), breaks = 1000)
+hist(as.numeric(unlist(T0_RNA_log2_FPKM)), breaks = 1000)
+hist(as.numeric(unlist(T48_RNA_log2_FPKM)), breaks = 1000)
 
 ```
 
@@ -121,64 +135,88 @@ hist(as.numeric(unlist(day2_RNA_log2_FPKM)), breaks = 1000)
 Many <1, so let's remove those and plot again:
 ```{r}
 
-day0_RNA_log2_FPKM[day0_RNA_log2_FPKM < 1] <- NA
-hist(as.numeric(unlist(day0_RNA_log2_FPKM)), breaks = 1000) 
+T0_RNA_log2_FPKM[T0_RNA_log2_FPKM < 1] <- NA
+hist(as.numeric(unlist(T0_RNA_log2_FPKM)), breaks = 1000) 
 
-day2_RNA_log2_FPKM[day2_RNA_log2_FPKM < 1] <- NA
-hist(as.numeric(unlist(day2_RNA_log2_FPKM)), breaks = 1000) 
+T48_RNA_log2_FPKM[T48_RNA_log2_FPKM < 1] <- NA
+hist(as.numeric(unlist(T48_RNA_log2_FPKM)), breaks = 1000) 
 ```
 
-Let's remove all rows (genes) where >20% is NA
-For day0, where there are 10 samples, this means to keep all samples where <8 out of 9 are NA. In other words, There need to be at least 2 measurements to keep this one. 
-For day2, this means to keep samples where less than 6.4 out of 8 are NA. In other words, There need to be at least 3 measurements for the gene to not be filtered out
+Let's remove all rows (genes) where >25% is NA
+In a bigger dataset, 20% would be a nice cutoff. However, it is important to have more than 3 values when scaling RNA data. This is why we chose a 25% cutoff. 
+
+For T0, where there are 10 samples, this means to keep all samples where <8 out of 9 are NA. In other words, There need to be at least 2 measurements to keep this one. 
+For T48, this means to keep samples where less than 6.4 out of 8 are NA. In other words, There need to be at least 3 measurements for the gene to not be filtered out
 
 ```{r}
-day0_RNA_log2_FPKM <- day0_RNA_log2_FPKM[rowSums(is.na(day0_RNA_log2_FPKM)) < 0.8*ncol(day0_RNA_log2_FPKM),]
+T0_RNA_log2_FPKM <- T0_RNA_log2_FPKM[rowSums(is.na(T0_RNA_log2_FPKM)) < 0.75*ncol(T0_RNA_log2_FPKM),]
 
-hist(as.numeric(unlist(day0_RNA_log2_FPKM)), breaks = 1000) 
+hist(as.numeric(unlist(T0_RNA_log2_FPKM)), breaks = 1000) 
 
-day2_RNA_log2_FPKM <- day2_RNA_log2_FPKM[rowSums(is.na(day2_RNA_log2_FPKM)) < 0.8*ncol(day2_RNA_log2_FPKM),]
-hist(as.numeric(unlist(day2_RNA_log2_FPKM)), breaks = 1000) 
+T48_RNA_log2_FPKM <- T48_RNA_log2_FPKM[rowSums(is.na(T48_RNA_log2_FPKM)) < 0.75*ncol(T48_RNA_log2_FPKM),]
+hist(as.numeric(unlist(T48_RNA_log2_FPKM)), breaks = 1000) 
 
-# hist(as.numeric(unlist(day2_RNA_log2_FPKM[,c(1:4)])), breaks = 1000)
-# hist(as.numeric(unlist(day2_RNA_log2_FPKM[,c(5:8)])), breaks = 1000)
+# hist(as.numeric(unlist(T48_RNA_log2_FPKM[,c(1:4)])), breaks = 1000)
+# hist(as.numeric(unlist(T48_RNA_log2_FPKM[,c(5:8)])), breaks = 1000)
 
-# day2_RNA_log2_FPKM <- scale_gene_expression_data(day2_RNA_log2_FPKM)
+# T48_RNA_log2_FPKM <- scale_gene_expression_data(T48_RNA_log2_FPKM)
 # 
-# hist(as.numeric(unlist(day2_RNA_log2_FPKM)), breaks = 100)
+# hist(as.numeric(unlist(T48_RNA_log2_FPKM)), breaks = 100)
 # 
-# day0_RNA_log2_FPKM <- scale_gene_expression_data(day0_RNA_log2_FPKM)
+# T0_RNA_log2_FPKM <- scale_gene_expression_data(T0_RNA_log2_FPKM)
 # 
-# hist(as.numeric(unlist(day0_RNA_log2_FPKM[,c(1:4)])), breaks = 1000)
+# hist(as.numeric(unlist(T0_RNA_log2_FPKM[,c(1:4)])), breaks = 1000)
 # 
-# hist(as.numeric(unlist(day0_RNA_log2_FPKM[,c(5:8)])), breaks = 1000)
+# hist(as.numeric(unlist(T0_RNA_log2_FPKM[,c(5:8)])), breaks = 1000)
 
 
 ```
 ### Scaling data
 ```{r}
-day0_RNA_log2_FPKM <- scale_gene_expression_data(day0_RNA_log2_FPKM)
-day2_RNA_log2_FPKM <- scale_gene_expression_data(day2_RNA_log2_FPKM)
+
+# test <- as.data.frame(t(apply(T0_RNA_log2_FPKM,1, zscore)))
+# T48_RNA_log2_FPKM <- lapply(T48_RNA_log2_FPKM, zscore)
+# T48_RNA_log2_FPKM <- zscore(T48_RNA_log2_FPKM)
+T0_RNA_log2_FPKM <- t(scale(t(T0_RNA_log2_FPKM)))
+T48_RNA_log2_FPKM <- t(scale(t(T48_RNA_log2_FPKM)))
+
+# T0_RNA_log2_FPKM <- scale_gene_expression_data(T0_RNA_log2_FPKM)
+# T48_RNA_log2_FPKM <- scale_gene_expression_data(T48_RNA_log2_FPKM)
+
+
+
+# for (col in colnames(test)){
+#   # Create histogram with ggplot
+#   p <- hist(as.numeric(unlist(test[col])), breaks = 2000)
+#     # ggplot(test, aes_string(x = col)) +
+#     # geom_histogram(binwidth = 0.5, fill = "blue", color = "black", alpha = 0.7) +
+#     # labs(title = paste("Histogram of", col)) +
+#     # theme_minimal()
+#   # print(p)
+# }
+# boxplot(test)
 
 ```
 
 Exploring the data once more in histogram form
 ```{r}
-hist(as.numeric(unlist(day0_RNA_log2_FPKM)), breaks = 1000)
-hist(as.numeric(unlist(day2_RNA_log2_FPKM)), breaks = 1000)
+hist(as.numeric(unlist(T0_RNA_log2_FPKM)), breaks = 1000)
+hist(as.numeric(unlist(T48_RNA_log2_FPKM)), breaks = 1000)
+
 ```
 
+Why the peaks? Please help
 
 ### Saving data
 AMC
 ```{r}
-write.csv(day0_RNA_log2_FPKM,file = "L:\\basic\\divg\\EXIM\\ImmunoHematology\\Cathy Magnée\\Data\\CD3_HDvsCLL\\Transcriptomic\\day0_RNA_log2_FPKM_cleaned.csv")
-write.csv(day2_RNA_log2_FPKM,file = "L:\\basic\\divg\\EXIM\\ImmunoHematology\\Cathy Magnée\\Data\\CD3_HDvsCLL\\Transcriptomic\\day2_RNA_log2_FPKM_cleaned.csv")
+write.csv(T0_RNA_log2_FPKM,file = "L:\\basic\\divg\\EXIM\\ImmunoHematology\\Cathy Magnée\\Data\\CD3_HDvsCLL\\Transcriptomic\\T0_RNA_log2_FPKM_cleaned.csv")
+write.csv(T48_RNA_log2_FPKM,file = "L:\\basic\\divg\\EXIM\\ImmunoHematology\\Cathy Magnée\\Data\\CD3_HDvsCLL\\Transcriptomic\\T48_RNA_log2_FPKM_cleaned.csv")
 ```
 
 Laptop
 ```{r}
-# write.csv(day0_RNA_log2_FPKM,file = "../ourdata/transcriptomic/day0_RNA_log2_FPKM_cleaned.csv")
-# write.csv(day2_RNA_log2_FPKM,file = "../ourdata/transcriptomic/day2_RNA_log2_FPKM_cleaned.csv")
+# write.csv(T0_RNA_log2_FPKM,file = "../ourdata/transcriptomic/T0_RNA_log2_FPKM_cleaned.csv")
+# write.csv(T48_RNA_log2_FPKM,file = "../ourdata/transcriptomic/T48_RNA_log2_FPKM_cleaned.csv")
 ```
 

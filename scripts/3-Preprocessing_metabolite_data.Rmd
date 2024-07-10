@@ -13,7 +13,13 @@ knitr::opts_chunk$set(echo = TRUE)
 
 This document describes the preprocessing of metabolomic T cell data. It is based off the preprocessing documents in the FACTOR_Cosmos No_MOFA branch by Saezlab on github. This document is preceded by the 2 - Preprocessing transcriptomic data R markdown document and precedes the 4 - Preparing COSMOS inputs R markdown document. 
 
-This document is annotated to explain the steps and the choices that were made during this project. Other options will be highlighted.
+This document is annotated to explain the steps and the choices that were made durnig this project. Other options will be highlighted. 
+
+Document summary:
+The main goal of this document is to transform the raw metabolite data into data that can be compared across sample. This will be done in the following steps and using the following tools:
+1. Two steps of filtering (outliers)
+2. Normalization using vsn normalization
+3. Scaling using Z-score normalization.
 
 #### Loading
 
@@ -31,40 +37,40 @@ Splitting these in AMC and Laptop, so it is easier to switch.
 
 AMC:
 ```{r}
-# day0_path <- "L:\\basic\\divg\\EXIM\\ImmunoHematology\\Cathy Magnée\\Data\\CD3_HDvsCLL\\Metabolomic\\day0_metabs_raw.csv"
-# day2_path <- "L:\\basic\\divg\\EXIM\\ImmunoHematology\\Cathy Magnée\\Data\\CD3_HDvsCLL\\Metabolomic\\day2_metabs_raw.csv"
+# T0_path <- "L:\\basic\\divg\\EXIM\\ImmunoHematology\\Cathy Magnée\\Data\\CD3_HDvsCLL\\Metabolomic\\T0_metabs_raw.csv"
+# T48_path <- "L:\\basic\\divg\\EXIM\\ImmunoHematology\\Cathy Magnée\\Data\\CD3_HDvsCLL\\Metabolomic\\T48_metabs_raw.csv"
 
 # or hmdb?
-day0_path <- "L:\\basic\\divg\\EXIM\\ImmunoHematology\\Cathy Magnée\\Data\\CD3_HDvsCLL\\Metabolomic\\day0_metabs_hmdb.csv"
-day2_path <- "L:\\basic\\divg\\EXIM\\ImmunoHematology\\Cathy Magnée\\Data\\CD3_HDvsCLL\\Metabolomic\\day2_metabs_hmdb.csv"
+T0_path <- "L:\\basic\\divg\\EXIM\\ImmunoHematology\\Cathy Magnée\\Data\\CD3_HDvsCLL\\Metabolomic\\T0_metabs_hmdb.csv"
+T48_path <- "L:\\basic\\divg\\EXIM\\ImmunoHematology\\Cathy Magnée\\Data\\CD3_HDvsCLL\\Metabolomic\\T48_metabs_hmdb.csv"
 
 ```
 Laptop:
 ```{r}
-# day0_path <- "../ourdata/metabolomic/day0_metabs_raw.csv"
-# day2_path <- "../ourdata/metabolomic/day2_metabs_raw.csv"
+# T0_path <- "../ourdata/metabolomic/T0_metabs_raw.csv"
+# T48_path <- "../ourdata/metabolomic/T48_metabs_raw.csv"
 
 # or hmdb?
-# day0_path <- "../ourdata/metabolomic/day0_metabs_hmdb.csv"
-# day2_path <- "../ourdata/metabolomic/day2_metabs_hmdb.csv"
+# T0_path <- "../ourdata/metabolomic/T0_metabs_hmdb.csv"
+# T48_path <- "../ourdata/metabolomic/T48_metabs_hmdb.csv"
 ```
 
 Loading data and removing paths:
 ```{r}
-# day0_metabs_raw <- as.data.frame(read_csv(day0_path))
-# day2_metabs_raw <- as.data.frame(read_csv(day2_path))
+# T0_metabs_raw <- as.data.frame(read_csv(T0_path))
+# T48_metabs_raw <- as.data.frame(read_csv(T48_path))
 
 # or hmdb?
-day0_metabs_hmdb <- as.data.frame(read_csv(day0_path))
-day2_metabs_hmdb <- as.data.frame(read_csv(day2_path))
+T0_metabs_hmdb <- as.data.frame(read_csv(T0_path))
+T48_metabs_hmdb <- as.data.frame(read_csv(T48_path))
 
 # Adjusting first column to rownames
-day0_metabs_hmdb <- tibble::column_to_rownames(day0_metabs_hmdb, var = "...1")
-day2_metabs_hmdb <- tibble::column_to_rownames(day2_metabs_hmdb, var = "...1")
+T0_metabs_hmdb <- tibble::column_to_rownames(T0_metabs_hmdb, var = "...1")
+T48_metabs_hmdb <- tibble::column_to_rownames(T48_metabs_hmdb, var = "...1")
 
 # Removing redundant paths
-rm(day0_path)
-rm(day2_path)
+rm(T0_path)
+rm(T48_path)
 
 ```
 
@@ -73,118 +79,109 @@ rm(day2_path)
 Plotting the data to see the distribution is the first step to understanding our data
 
 ```{r}
-hist(as.numeric(unlist(log2(day0_metabs_hmdb))), breaks = 500)
-hist(as.numeric(unlist(log2(day2_metabs_hmdb))), breaks = 500)
+hist(as.numeric(unlist(log2(T0_metabs_hmdb))), breaks = 500)
+hist(as.numeric(unlist(log2(T48_metabs_hmdb))), breaks = 500)
 
 ```
 
 Heatmaps:
 ```{r}
-pheatmap(log2(day0_metabs_hmdb), show_colnames = F, show_rownames = F) 
+pheatmap(log2(T0_metabs_hmdb), show_colnames = F, show_rownames = F) 
 
-# pheatmap(abs(log2(day2_metabs_hmdb)), show_colnames = F, show_rownames = F)
+# pheatmap(abs(log2(T48_metabs_hmdb)), show_colnames = F, show_rownames = F)
 
 ```
 
 
-In the day2 dataset the histogram of the log2 values are all negative. This means all values are between 0 and 1. This should be adjusted for later wehen we use VSN normalization
+In the T48 dataset the histogram of the log2 values are all negative. This means all values are between 0 and 1. This should be adjusted for later wehen we use VSN normalization
 
-The day0 heatmap also does not show much interesting as there are low values skewing the heatmap.
+The T0 heatmap also does not show much interesting as there are low values skewing the heatmap.
 
-For the log2(day0) dataset, there are a some outliers <-30
-For log2(day2), The outliers are -Inf (these are 0's)
+For the log2(T0) dataset, there are a some outliers <-30
+For log2(T48), The outliers are -Inf (these are 0's)
 
 Removing outliers:
 ```{r}
-day0_metabs_hmdb[log2(day0_metabs_hmdb) < -30] <- NA 
-day2_metabs_hmdb[log2(day2_metabs_hmdb) == -Inf] <- NA 
+T0_metabs_hmdb[log2(T0_metabs_hmdb) < -30] <- NA 
+T48_metabs_hmdb[log2(T48_metabs_hmdb) == -Inf] <- NA 
 
 ```
 
 ```{r}
-hist(as.numeric(unlist(log2(day0_metabs_hmdb))), breaks = 1000)
-hist(as.numeric(unlist(log2(day2_metabs_hmdb))), breaks = 1000)
+hist(as.numeric(unlist(log2(T0_metabs_hmdb))), breaks = 1000)
+hist(as.numeric(unlist(log2(T48_metabs_hmdb))), breaks = 1000)
 
 ```
 Heatmaps after outlier removal:
 ```{r}
-pheatmap(log2(day0_metabs_hmdb), show_colnames = F, show_rownames = F) 
+pheatmap(log2(T0_metabs_hmdb), show_colnames = F, show_rownames = F) 
 
-pheatmap(abs(log2(day2_metabs_hmdb)), show_colnames = F, show_rownames = F)
+pheatmap(abs(log2(T48_metabs_hmdb)), show_colnames = F, show_rownames = F)
 ```
 
 Removing new outliers
-- For log2 day0: <-1 and> 11
-- For log2 day2: <-16 and >-6
+- For log2 T0: <-1 and> 11
+- For log2 T48: <-16 and >-6
 
 ```{r}
-day0_metabs_hmdb[log2(day0_metabs_hmdb) < -1] <- NA 
-day0_metabs_hmdb[log2(day0_metabs_hmdb) > 11 ] <- NA 
+T0_metabs_hmdb[log2(T0_metabs_hmdb) < -1] <- NA 
+T0_metabs_hmdb[log2(T0_metabs_hmdb) > 11 ] <- NA 
 
-day2_metabs_hmdb[log2(day2_metabs_hmdb) < -16] <- NA 
-day2_metabs_hmdb[log2(day2_metabs_hmdb) > 6] <- NA 
+T48_metabs_hmdb[log2(T48_metabs_hmdb) < -16] <- NA 
+T48_metabs_hmdb[log2(T48_metabs_hmdb) > 6] <- NA 
 ```
 
 
-The histogram values of (log) day2 are only negative. This means the m/z ratios are all between 0-1. Currently, these values will mean nothing. Let's change this using two methods:
-
-1. Remove unwanted sample-to-sample variation
-(Normalization, includes centering, scaling and log transformation, mostly sample-bound transformations (in other words, column-wise)
-
-2. Adjusting variance of different metabolites to reduce sample heteroscedasticity. 
-(Mostly row-wise normalization)
-
-These methods are used at the same time, to make it more confusing. 
-Source for this: Sun J., Xia Y. (2024) Genes & Diseased (11:3). <https://doi.org/10.1016/j.gendis.2023.04.018.> 
+The histogram values of (log) T48 are only negative. This means the m/z ratios are all between 0-1. 
 
 VSN normalization is used to adjust values to be able to compare across samples
 
 ### VSN normalization
-First for day0
+First for T0
 ```{r}
-day0_metabs_hmdb <- day0_metabs_hmdb[,-4]
-fit <- vsnMatrix(as.matrix(day0_metabs_hmdb))
+T0_metabs_hmdb <- T0_metabs_hmdb[,-4]
+fit <- vsnMatrix(as.matrix(T0_metabs_hmdb))
 meanSdPlot(fit)
-day0_metabs_hmdb <- as.data.frame(vsn::predict(fit,as.matrix(day0_metabs_hmdb)))
+T0_metabs_hmdb <- as.data.frame(vsn::predict(fit,as.matrix(T0_metabs_hmdb)))
 
 ```
 Note that in the above chunk, CLL2474 is removed from the dataset as it proved to be an outlier in the downstream analysis. I do not want this to influence the vsnMatrix normalization. 
 
-Then for day2:
+Then for T48:
 ```{r}
-fit <- vsnMatrix(as.matrix(day2_metabs_hmdb))
+fit <- vsnMatrix(as.matrix(T48_metabs_hmdb))
 meanSdPlot(fit)
-day2_metabs_hmdb <- as.data.frame(vsn::predict(fit,as.matrix(day2_metabs_hmdb)))
+T48_metabs_hmdb <- as.data.frame(vsn::predict(fit,as.matrix(T48_metabs_hmdb)))
 ```
 
 ```{r}
-pheatmap(day0_metabs_hmdb[complete.cases(day0_metabs_hmdb),], show_colnames = T, show_rownames = F, cluster_rows = F) # , color = colorRampPalette(c("lightgrey","cornflowerblue", "blue"))(100)
+pheatmap(T0_metabs_hmdb[complete.cases(T0_metabs_hmdb),], show_colnames = T, show_rownames = F, cluster_rows = F) # , color = colorRampPalette(c("lightgrey","cornflowerblue", "blue"))(100)
 
-pheatmap(day2_metabs_hmdb[complete.cases(day2_metabs_hmdb),], show_colnames = T, show_rownames = F, cluster_rows = F) # , color = colorRampPalette(c("forestgreen","lightgrey", "blue"))(100))  
+pheatmap(T48_metabs_hmdb[complete.cases(T48_metabs_hmdb),], show_colnames = T, show_rownames = F, cluster_rows = F) # , color = colorRampPalette(c("forestgreen","lightgrey", "blue"))(100))  
 ```
 
 ### Scaling using Z-normalization
-Day0:
+T0:
 ```{r}
 
-SDs <- apply(day0_metabs_hmdb,1,function(x){sd(x,na.rm = T)})
-means <- rowMeans(day0_metabs_hmdb, na.rm = T)
-day0_metabs_scaled <- (day0_metabs_hmdb - means) / SDs
-pheatmap(day0_metabs_scaled[complete.cases(day0_metabs_scaled),], show_colnames = T, show_rownames = F, cluster_rows = F) 
+SDs <- apply(T0_metabs_hmdb,1,function(x){sd(x,na.rm = T)})
+means <- rowMeans(T0_metabs_hmdb, na.rm = T)
+T0_metabs_scaled <- (T0_metabs_hmdb - means) / SDs
+pheatmap(T0_metabs_scaled[complete.cases(T0_metabs_scaled),], show_colnames = T, show_rownames = F, cluster_rows = F) 
 
-hist(as.numeric(unlist(day0_metabs_scaled)), breaks = 1000) 
+hist(as.numeric(unlist(T0_metabs_scaled)), breaks = 1000) 
 ```
 
 CLL2474 is an outlier. For now, this one is taken out (this has been done previously)
 
-Day2:
+T48:
 ```{r}
-SDs <- apply(day2_metabs_hmdb,1,function(x){sd(x,na.rm = T)})
-means <- rowMeans(day2_metabs_hmdb, na.rm = T)
-day2_metabs_scaled <- (day2_metabs_hmdb - means) / SDs
-pheatmap(day2_metabs_scaled[complete.cases(day2_metabs_scaled),], show_colnames = T, show_rownames = F, cluster_rows = F) 
+SDs <- apply(T48_metabs_hmdb,1,function(x){sd(x,na.rm = T)})
+means <- rowMeans(T48_metabs_hmdb, na.rm = T)
+T48_metabs_scaled <- (T48_metabs_hmdb - means) / SDs
+pheatmap(T48_metabs_scaled[complete.cases(T48_metabs_scaled),], show_colnames = T, show_rownames = F, cluster_rows = F) 
 
-hist(as.numeric(unlist(day2_metabs_scaled)), breaks = 1000) 
+hist(as.numeric(unlist(T48_metabs_scaled)), breaks = 1000) 
 ```
 
 
@@ -192,14 +189,14 @@ hist(as.numeric(unlist(day2_metabs_scaled)), breaks = 1000)
 AMC
 ```{r}
 ############ Paths to write data to AMC PC ############ 
-write.csv(day0_metabs_scaled,file = "L:\\basic\\divg\\EXIM\\ImmunoHematology\\Cathy Magnée\\Data\\CD3_HDvsCLL\\Metabolomic\\day0_metabs_hmdb_scaled.csv")
-write.csv(day2_metabs_scaled,file = "L:\\basic\\divg\\EXIM\\ImmunoHematology\\Cathy Magnée\\Data\\CD3_HDvsCLL\\Metabolomic\\day2_metabs_hmdb_scaled.csv")
+write.csv(T0_metabs_scaled,file = "L:\\basic\\divg\\EXIM\\ImmunoHematology\\Cathy Magnée\\Data\\CD3_HDvsCLL\\Metabolomic\\T0_metabs_hmdb_scaled.csv")
+write.csv(T48_metabs_scaled,file = "L:\\basic\\divg\\EXIM\\ImmunoHematology\\Cathy Magnée\\Data\\CD3_HDvsCLL\\Metabolomic\\T48_metabs_hmdb_scaled.csv")
 ```
 
 Laptop
 ```{r}
 ############ Paths to write data to laptop ############ 
-# write.csv(day0_metabs_scaled,file = "../ourdata/metabolomic/day0_metabs_hmdb_scaled.csv")
-# write.csv(day2_metabs_scaled,file = "../ourdata/metabolomic/day2_metabs_hmdb_scaled.csv")
+# write.csv(T0_metabs_scaled,file = "../ourdata/metabolomic/T0_metabs_hmdb_scaled.csv")
+# write.csv(T48_metabs_scaled,file = "../ourdata/metabolomic/T48_metabs_hmdb_scaled.csv")
 ```
 

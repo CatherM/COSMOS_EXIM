@@ -12,7 +12,7 @@ knitr::opts_chunk$set(echo = TRUE)
 ## Running COSMOS
 
 This document describes the process of running COSMOS from COSMOS inputs. This will happen for two datafiles in multiple steps. First, the data, metanetwork and packages will be loaded into the environment. Next, the options for CARNIVAL will be chosen and explained. CARNIVAL will run using the COSMOS metanetwork and our data both forward (signalling to metabolism) and back (metabolism to signalling). Finally, the forward and backward outputs will be combined. 
-This will happen first for day0, then for day 2. 
+This will happen first for T0, then for T48. 
 
 This script is based of the run_cosmos.R document in the FACTOR_COSMOS github by Saezlab. This document is preceded by the 4 - Preparing COSMOS inputs R markdown document and procedes the 6 - Analyzing COSMOS output R markdown document. 
 
@@ -38,14 +38,14 @@ library(dplyr)
 Data path::
 AMC:
 ```{r}
-day0_input_path <- "L:\\basic\\divg\\EXIM\\ImmunoHematology\\Cathy Magnée\\Data\\CD3_HDvsCLL\\CosmosR\\day0_cosmos_inputs.RData"
-day2_input_path <- "L:\\basic\\divg\\EXIM\\ImmunoHematology\\Cathy Magnée\\Data\\CD3_HDvsCLL\\CosmosR\\day2_cosmos_inputs.RData"
+T0_input_path <- "L:\\basic\\divg\\EXIM\\ImmunoHematology\\Cathy Magnée\\Data\\CD3_HDvsCLL\\CosmosR\\T0_cosmos_inputs.RData"
+T48_input_path <- "L:\\basic\\divg\\EXIM\\ImmunoHematology\\Cathy Magnée\\Data\\CD3_HDvsCLL\\CosmosR\\T48_cosmos_inputs.RData"
 ```
 
 Laptop:
 ```{r}
-# day0_input_path <- "../ourdata/cosmos/day0_cosmos_inputs.RData"
-# day2_input_path <- "../ourdata/cosmos/day2_cosmos_inputs.RData"
+# T0_input_path <- "../ourdata/cosmos/T0_cosmos_inputs.RData"
+# T48_input_path <- "../ourdata/cosmos/T48_cosmos_inputs.RData"
 ```
 
 Loading data:
@@ -54,8 +54,8 @@ data("meta_network")
 
 meta_network <- meta_network_cleanup(meta_network)
 
-load(day0_input_path)
-load(day2_input_path)
+load(T0_input_path)
+load(T48_input_path)
 
 
 ```
@@ -63,34 +63,35 @@ load(day2_input_path)
 
 Dataset and patient
 ```{r}
-cosmos_inputs <- day0_cosmos_inputs # Day 0 or Day 2
+cosmos_inputs <- T48_cosmos_inputs # T0 or T48
 names(cosmos_inputs)
 
-patient <- "HD94_T0" # Pick a person for who you want to make the network
+patient <- "CLL2479_T48" # Pick a person for who you want to make the network
 
 sig_input <- cosmos_inputs[[patient]]$TF_scores
 metab_input <- cosmos_inputs[[patient]]$metabolomic 
 RNA_input <- cosmos_inputs[[patient]]$RNA
 
-max_depth <- 7
+max_depth <- 2
 
-seconds_per_step <- 64800 # 18 * 3600 seconds, which is the full weekend hopefully. 
+seconds_per_step <- 3600/10 
 ```
 
 The chunk below calculates how many signalling inputs and metabolic inputs are left after filtering for each patients. 
 ```{r}
-# ## Trash chunk please consider removing later
-# cosmos_inputs <- day0_cosmos_inputs # Day 0 or Day 2
+# ## Chunk to check how much data is available per sample
+# cosmos_inputs <- T48_cosmos_inputs # T0 or T48
 # 
 # inputs <- data.frame()
 # 
 # for (patient in names(cosmos_inputs)){
 #   sig_input <- cosmos_inputs[[patient]]$TF_scores
 #   metab_input <- cosmos_inputs[[patient]]$metabolomic
+
 #   RNA_input <- cosmos_inputs[[patient]]$RNA
 #   metab_input <- prepare_metab_inputs(metab_input, c("c","m"))
-#   sig_input <- sig_input[abs(sig_input) > 2]
-#   metab_input <- metab_input[abs(metab_input) > 2]
+#   sig_input <- sig_input[abs(sig_input) > 1.5]
+#   metab_input <- metab_input[abs(metab_input) > 1.5]
 #   metab_input <- cosmosR:::filter_input_nodes_not_in_pkn(metab_input, meta_network)
 #   sig_input <- cosmosR:::filter_input_nodes_not_in_pkn(sig_input, meta_network)
 #   new_row <- list(
@@ -124,9 +125,9 @@ For now, we are using c and m as these are the default options.
 
 Significant inputs:
 ```{r}
-##Filter significant inputs
-sig_input <- sig_input[abs(sig_input) > 2]
-metab_input <- metab_input[abs(metab_input) > 2]
+# ##Filter significant inputs
+# sig_input <- sig_input[abs(sig_input) > 1.5]
+# metab_input <- metab_input[abs(metab_input) > 1.5]
 ```
 The default for this is 2, however I changed it to 1 as there would be only 
 
@@ -186,7 +187,7 @@ sig_input <- cosmosR:::filter_input_nodes_not_in_pkn(sig_input, meta_network)
 
 ```
 
-```{r}
+```{r include = FALSE}
 test_for <- preprocess_COSMOS_signaling_to_metabolism(meta_network = meta_network[,c(1,3,2)],
                                                       signaling_data = sig_input,
                                                       metabolic_data = metab_input,
@@ -208,7 +209,6 @@ test_result_for <- run_COSMOS_signaling_to_metabolism(data = test_for,
                                                       CARNIVAL_options = my_options)
 
 
-
 formatted_res <- format_COSMOS_res(test_result_for)
 
 SIF <- formatted_res[[1]]
@@ -227,7 +227,7 @@ write_csv(ATT, file = paste("../results/",paste(patient, "_ATT.csv",sep = ""), s
 
 ## Step 3: Preprocessing metabolism to signalling
 
-```{r}
+```{r include = FALSE}
 my_options$timelimit <- seconds_per_step
 
 
@@ -246,7 +246,7 @@ If you come across an error in CheckPerbutations, check if it does work with hig
 
 ## Step 4: Running metabolism to signalling 
 
-```{r}
+```{r include = FALSE}
 my_options$timelimit <- seconds_per_step
 
 test_result_back <- run_COSMOS_metabolism_to_signaling(data = test_back,
@@ -268,7 +268,7 @@ write_csv(ATT_back, file = paste("../results/",paste(patient, "_ATT_back.csv",se
 
 ## Step 5: Combining these datasets
 
-```{r}
+```{r, warning = FALSE}
 SIF_full <- as.data.frame(rbind(SIF,SIF_back))
 SIF_full <- unique(SIF_full)
 
@@ -295,7 +295,7 @@ ATT_full$NodeType <- ifelse(ATT_full$Nodes %in% C_nodes,"C",ifelse(ATT_full$Node
 write_csv(SIF_full, file = paste("../results/d", paste(max_depth, paste(patient, "_SIF_full.csv", sep = ""), sep = ""), sep = ""))
 write_csv(ATT_full, file = paste("../results/d", paste(max_depth, paste(patient, "_ATT_full.csv",sep = ""), sep = ""), sep = ""))
 end.time <- Sys.time()
-time.taken <- round(end.time - start.time, 2)
+time.taken <- round(end.time-start.time, 2)
 time.taken
 ```
 

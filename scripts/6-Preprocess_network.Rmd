@@ -1,0 +1,70 @@
+---
+title: "6-Analyze_Network"
+author: "Cathy Magnée"
+date: "2024-07-10"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Analyze networks
+
+This documents is the sixth in this project. The first goal is to make the network files Cytoscape-ready. The first things to tackle are issues in uniformity and duplicates.
+
+#### Loading
+
+```{r}
+library(readr)
+
+```
+
+I am not sure yet to which extent I want to edit these networks one-by-one, or automatically. For now, we do one-by-one. Probably will automate later x
+
+Input which network you want to edit
+```{r}
+patient <- "CLL2479_T48" # Pick a person for who you want to make the network
+max_depth <- 2
+```
+
+
+
+Input paths AMC and laptop are the same:
+```{r}
+SIF_path <- paste("../results/d", paste(max_depth, paste(patient, "_SIF_full.csv", sep = ""), sep = ""), sep = "")
+ATT_path <- paste("../results/d", paste(max_depth, paste(patient, "_ATT_full.csv",sep = ""), sep = ""), sep = "")
+```
+
+```{r}
+SIF <- read_csv(SIF_path)
+ATT <- read_csv(ATT_path)
+```
+### Uniformity
+Removing the everything and the "__" from the names in columns $Node1 and $Node2
+
+```{r}
+SIF$Node1 <- sub(".*__", "", SIF$Node1)
+SIF$Node2 <- sub(".*__", "", SIF$Node2)
+ATT$Nodes<- sub(".*__", "", ATT$Nodes)
+
+```
+
+Remove duplicates and sum up their weights
+```{r}
+SIF <- SIF |>
+  filter(Node1 != Node2) |> # First removing nodes that are re-activating themselves
+  group_by(Node1, Sign, Node2) |>
+  summarize(Weight = sum(Weight), .groups='drop')
+
+```
+
+
+```{r}
+write_csv(SIF, file = paste("../results/d", paste(max_depth, paste(patient, "_SIF_full.csv", sep = ""), sep = ""), sep = ""))
+write_csv(ATT, file = paste("../results/d", paste(max_depth, paste(patient, "_ATT_full.csv",sep = ""), sep = ""), sep = ""))
+```
+
+
+
+
