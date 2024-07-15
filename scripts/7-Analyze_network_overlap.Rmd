@@ -1,0 +1,227 @@
+---
+title: "7 - Postprocessing network results"
+author: "Cathy Magnée"
+date: "2024-07-11"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Analyzing network results
+
+Document for analyzing the overlapping notes in the networkz
+
+
+
+## Loading...
+
+```{r}
+library(readr)
+library(dplyr)
+```
+
+Path both
+```{r}
+
+```
+
+
+Path AMC
+```{r}
+
+```
+
+Path Laptop
+```{r}
+T0_input_path <- "../ourdata/cosmos/T0_cosmos_inputs.RData"
+T48_input_path <- "../ourdata/cosmos/T48_cosmos_inputs.RData"
+
+```
+
+Loop to get paths of patient SIFs
+```{r}
+patient <- "CLL2479_T48" # Pick a person for who you want to make the network
+max_depth <- 2
+
+load(T0_input_path)
+load(T48_input_path)
+T48_cosmos_inputs <- day2_cosmos_inputs
+
+# Edit below to what you want to preprocess
+cosmos_inputs <- T48_cosmos_inputs # edit these as please you
+max_depth <- 2 # edit these as please yo
+
+CLL_overlap_activities <- as.data.frame(read_delim(overlap_path, delim = "/n", col_names = FALSE))
+colnames(overlap_activities) <- "Nodes" 
+
+for (patient in names(cosmos_inputs)){
+  # insert paths
+  # SIF_path <- paste("../results/processed_results/d", paste(max_depth, paste(patient, "_SIF_full.csv", sep = ""), sep = ""), sep = "")
+  # SIF <- read_csv(SIF_path)
+  # print(head(SIF))
+  ATT_path <- paste("../results/processed_results/d", paste(max_depth, paste(patient, "_ATT_full.csv",sep = ""), sep = ""), sep = "")
+  ATT <- read_csv(ATT_path)
+  # print(head(ATT[,c(1,7)]))
+  overlap_activities[patient] <- ATT$Activity[match(overlap_activities$Nodes, ATT$Nodes)]
+  print(head(overlap_activities))
+}
+
+CLL_overlap_activities[,2:8] <- round(overlap_activities[,2:8], 2)
+CLL_overlap_activities$sum_CLL <- rowSums(overlap_activities[,2:5])
+CLL_overlap_activities$sum_HD <- rowSums(overlap_activities[,6:9], na.rm = TRUE)
+
+CLL_overlap <- overlap_activities[,c(1:5)]
+CLL_overlap[,2:5] <- round(CLL_overlap[,2:5], 2)
+CLL_overlap$sum_CLL <- rowSums(CLL_overlap[,2:5])
+
+
+HD_overlap <- overlap_activities[,c(1,6:9)]
+HD_overlap[,2:5] <- round(HD_overlap[,2:5], 2)
+HD_overlap$sum_HD <- rowSums(HD_overlap[,2:5], na.rm = T)
+
+```
+
+
+Overlap HD 
+```{r}
+---
+title: "7 - Postprocessing network results"
+author: "Cathy Magnée"
+date: "2024-07-11"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Analyzing network results
+
+Document for analyzing the overlapping notes in the networkz
+
+
+
+## Loading...
+
+```{r}
+library(readr)
+library(dplyr)
+```
+
+Path both
+```{r}
+overlap_path <- "../results/processed_results/T48_CLL_overlap_nodes.txt"
+
+```
+
+
+Path AMC
+```{r}
+
+```
+
+Path Laptop
+```{r}
+T0_input_path <- "../ourdata/cosmos/T0_cosmos_inputs.RData"
+T48_input_path <- "../ourdata/cosmos/T48_cosmos_inputs.RData"
+
+```
+
+Loop to get paths of patient ATTs
+```{r}
+overlap_path <- "../results/processed_results/T48_CLL_overlap_nodes.txt"
+
+max_depth <- 2
+
+load(T0_input_path)
+load(T48_input_path)
+T48_cosmos_inputs <- day2_cosmos_inputs
+
+# Edit below to what you want to preprocess
+cosmos_inputs <- T48_cosmos_inputs # edit these as please you
+max_depth <- 2 # edit these as please yo
+
+CLL_overlap_activities <- as.data.frame(read_delim(overlap_path, delim = "/n", col_names = FALSE))
+colnames(CLL_overlap_activities) <- "Nodes" 
+
+for (patient in names(cosmos_inputs)){
+  # insert paths
+  # SIF_path <- paste("../results/processed_results/d", paste(max_depth, paste(patient, "_SIF_full.csv", sep = ""), sep = ""), sep = "")
+  # SIF <- read_csv(SIF_path)
+  # print(head(SIF))
+  ATT_path <- paste("../results/processed_results/d", paste(max_depth, paste(patient, "_ATT_full.csv",sep = ""), sep = ""), sep = "")
+  ATT <- read_csv(ATT_path)
+  # print(head(ATT[,c(1,7)]))
+  CLL_overlap_activities[patient] <- ATT$Activity[match(CLL_overlap_activities$Nodes, ATT$Nodes)]
+  print(head(CLL_overlap_activities))
+}
+
+CLL_overlap_activities[,2:8] <- round(CLL_overlap_activities[,2:8], 2)
+CLL_overlap_activities$sum_CLL <- rowSums(CLL_overlap_activities[,2:5])
+CLL_overlap_activities$sum_HD <- rowSums(CLL_overlap_activities[,6:9], na.rm = TRUE)
+
+CLL_overlap <- CLL_overlap_activities[,c(1:5)]
+CLL_overlap[,2:5] <- round(CLL_overlap[,2:5], 2)
+CLL_overlap$sum_CLL <- rowSums(CLL_overlap[,2:5])
+
+
+HD_overlap <- CLL_overlap_activities[,c(1,6:9)]
+HD_overlap[,2:5] <- round(HD_overlap[,2:5], 2)
+HD_overlap$sum_HD <- rowSums(HD_overlap[,2:5], na.rm = T)
+
+```
+
+
+```{r}
+overlap_path <- "../results/processed_results/T48_HD_overlap_nodes.txt"
+
+max_depth <- 2
+
+load(T0_input_path)
+load(T48_input_path)
+T48_cosmos_inputs <- day2_cosmos_inputs
+
+# Edit below to what you want to preprocess
+cosmos_inputs <- T48_cosmos_inputs # edit these as please you
+max_depth <- 2 # edit these as please yo
+
+HD_overlap_activities <- as.data.frame(read_delim(overlap_path, delim = "/n", col_names = FALSE))
+colnames(HD_overlap_activities) <- "Nodes" 
+
+for (patient in names(cosmos_inputs)){
+  # insert paths
+  # SIF_path <- paste("../results/processed_results/d", paste(max_depth, paste(patient, "_SIF_full.csv", sep = ""), sep = ""), sep = "")
+  # SIF <- read_csv(SIF_path)
+  # print(head(SIF))
+  ATT_path <- paste("../results/processed_results/d", paste(max_depth, paste(patient, "_ATT_full.csv",sep = ""), sep = ""), sep = "")
+  ATT <- read_csv(ATT_path)
+  # print(head(ATT[,c(1,7)]))
+  HD_overlap_activities[patient] <- ATT$Activity[match(HD_overlap_activities$Nodes, ATT$Nodes)]
+  print(head(HD_overlap_activities))
+}
+
+HD_overlap_activities[,2:8] <- round(HD_overlap_activities[,2:8], 2)
+HD_overlap_activities$sum_CLL <- rowSums(HD_overlap_activities[,2:5], na.rm = TRUE)
+HD_overlap_activities$sum_HD <- rowSums(HD_overlap_activities[,6:9], na.rm = TRUE)
+
+CLL_overlap <- HD_overlap_activities[,c(1:5)]
+CLL_overlap[,2:5] <- round(CLL_overlap[,2:5], 2)
+CLL_overlap$sum_CLL <- rowSums(CLL_overlap[,2:5], na.rm = TRUE)
+
+
+HD_overlap <- HD_overlap_activities[,c(1,6:9)]
+HD_overlap[,2:5] <- round(HD_overlap[,2:5], 2)
+HD_overlap$sum_HD <- rowSums(HD_overlap[,2:5], na.rm = T)
+```
+
+```{r}
+all_overlap_activities <- intersect(HD_overlap_activities, CLL_overlap_activities)
+all_overlap_activities_significant <- all_overlap_activities |>
+  filter(all_overlap_activities$sum_CLL-all_overlap_activities$sum_HD > 2 |
+           all_overlap_activities$sum_HD-all_overlap_activities$sum_CLL > 2 | 
+           all_overlap_activities$sum_CLL-all_overlap_activities$sum_HD < -2 | 
+           all_overlap_activities$sum_HD-all_overlap_activities$sum_CLL < -2 )
+```
+

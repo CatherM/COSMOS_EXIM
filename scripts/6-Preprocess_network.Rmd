@@ -17,7 +17,7 @@ This documents is the sixth in this project. The first goal is to make the netwo
 
 ```{r}
 library(readr)
-
+library(dplyr)
 ```
 
 I am not sure yet to which extent I want to edit these networks one-by-one, or automatically. For now, we do one-by-one. Probably will automate later x
@@ -28,13 +28,23 @@ patient <- "CLL2479_T48" # Pick a person for who you want to make the network
 max_depth <- 2
 ```
 
-
-
 Input paths AMC and laptop are the same:
 ```{r}
 SIF_path <- paste("../results/d", paste(max_depth, paste(patient, "_SIF_full.csv", sep = ""), sep = ""), sep = "")
 ATT_path <- paste("../results/d", paste(max_depth, paste(patient, "_ATT_full.csv",sep = ""), sep = ""), sep = "")
 ```
+But not all! AMC:
+```{r}
+# AMC
+# T0_input_path <- "L:\\basic\\divg\\EXIM\\ImmunoHematology\\Cathy Magnée\\Data\\CD3_HDvsCLL\\CosmosR\\T0_cosmos_inputs.RData"
+# T48_input_path <- "L:\\basic\\divg\\EXIM\\ImmunoHematology\\Cathy Magnée\\Data\\CD3_HDvsCLL\\CosmosR\\T48_cosmos_inputs.RData"
+```
+Laptop
+```{r}
+T0_input_path <- "../ourdata/cosmos/T0_cosmos_inputs.RData"
+T48_input_path <- "../ourdata/cosmos/T48_cosmos_inputs.RData"
+```
+
 
 ```{r}
 SIF <- read_csv(SIF_path)
@@ -48,6 +58,15 @@ SIF$Node1 <- sub(".*__", "", SIF$Node1)
 SIF$Node2 <- sub(".*__", "", SIF$Node2)
 ATT$Nodes<- sub(".*__", "", ATT$Nodes)
 
+SIF$Node1 <- sub("_c", "", SIF$Node1)
+SIF$Node2 <- sub("_c", "", SIF$Node2)
+ATT$Nodes<- sub("_c", "", ATT$Nodes)
+
+SIF$Node1 <- sub("_m", "", SIF$Node1)
+SIF$Node2 <- sub("_m", "", SIF$Node2)
+ATT$Nodes<- sub("_m", "", ATT$Nodes)
+
+
 ```
 
 Remove duplicates and sum up their weights
@@ -59,12 +78,60 @@ SIF <- SIF |>
 
 ```
 
-
 ```{r}
-write_csv(SIF, file = paste("../results/d", paste(max_depth, paste(patient, "_SIF_full.csv", sep = ""), sep = ""), sep = ""))
-write_csv(ATT, file = paste("../results/d", paste(max_depth, paste(patient, "_ATT_full.csv",sep = ""), sep = ""), sep = ""))
+write_csv(SIF, file = paste("../results/processed_results/d", paste(max_depth, paste(patient, "_SIF_full.csv", sep = ""), sep = ""), sep = ""))
+write_csv(ATT, file = paste("../results/processed_results/d", paste(max_depth, paste(patient, "_ATT_full.csv",sep = ""), sep = ""), sep = ""))
 ```
 
 
 
+Now in a loop:
+```{r, include=FALSE}
+
+load(T0_input_path)
+load(T48_input_path)
+T48_cosmos_inputs <- day2_cosmos_inputs
+
+# Edit below to what you want to preprocess
+cosmos_inputs <- T48_cosmos_inputs # edit these as please you
+max_depth <- 2 # edit these as please you
+
+
+for (patient in names(cosmos_inputs)){
+  # insert paths
+  SIF_path <- paste("../results/d", paste(max_depth, paste(patient, "_SIF_full.csv", sep = ""), sep = ""), sep = "")
+  SIF <- read_csv(SIF_path)
+
+  ATT_path <- paste("../results/d", paste(max_depth, paste(patient, "_ATT_full.csv",sep = ""), sep = ""), sep = "")
+  ATT <- read_csv(ATT_path)
+  
+  SIF$Node1 <- sub(".*__", "", SIF$Node1)
+  SIF$Node2 <- sub(".*__", "", SIF$Node2)
+  ATT$Nodes<- sub(".*__", "", ATT$Nodes)
+  
+  SIF$Node1 <- sub(',', "", SIF$Node1)
+  SIF$Node2 <- sub(',', "", SIF$Node2)
+  ATT$Nodes<- sub(',', "", ATT$Nodes)
+  SIF$Node1 <- sub(',', "", SIF$Node1)
+  SIF$Node2 <- sub(',', "", SIF$Node2)
+  ATT$Nodes<- sub(',', "", ATT$Nodes)
+  
+  # SIF$Node1 <- sub("_m", "", SIF$Node1)
+  # SIF$Node2 <- sub("_m", "", SIF$Node2)
+  # ATT$Nodes<- sub("_m", "", ATT$Nodes)
+  
+  SIF <- SIF |>
+  filter(Node1 != Node2) |> # First removing nodes that are re-activating themselves
+  group_by(Node1, Sign, Node2) |>
+  summarize(Weight = sum(Weight), .groups='drop')
+  
+  write_csv(SIF, file = paste("../results/processed_results/d", paste(max_depth, paste(patient, "_SIF_full.csv", sep = ""), sep = ""), sep = ""))
+  write_csv(ATT, file = paste("../results/processed_results/d", paste(max_depth, paste(patient, "_ATT_full.csv",sep = ""), sep = ""), sep = ""))
+  
+}
+# networks.path <- "../results/"
+# all_files <- list.files(path = networks.path, pattern = "*._full.csv", full.names = TRUE)
+
+
+```
 
