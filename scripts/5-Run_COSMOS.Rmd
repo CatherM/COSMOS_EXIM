@@ -87,11 +87,13 @@ The chunk below calculates how many signalling inputs and metabolic inputs are l
 # for (patient in names(cosmos_inputs)){
 #   sig_input <- cosmos_inputs[[patient]]$TF_scores
 #   metab_input <- cosmos_inputs[[patient]]$metabolomic
-
+# 
 #   RNA_input <- cosmos_inputs[[patient]]$RNA
 #   metab_input <- prepare_metab_inputs(metab_input, c("c","m"))
-#   sig_input <- sig_input[abs(sig_input) > 1.5]
-#   metab_input <- metab_input[abs(metab_input) > 1.5]
+#   
+#   # sig_input <- sig_input[abs(sig_input) > 1.5]
+#   # metab_input <- metab_input[abs(metab_input) > 1.5]
+#   
 #   metab_input <- cosmosR:::filter_input_nodes_not_in_pkn(metab_input, meta_network)
 #   sig_input <- cosmosR:::filter_input_nodes_not_in_pkn(sig_input, meta_network)
 #   new_row <- list(
@@ -192,7 +194,7 @@ test_for <- preprocess_COSMOS_signaling_to_metabolism(meta_network = meta_networ
                                                       signaling_data = sig_input,
                                                       metabolic_data = metab_input,
                                                       diff_expression_data = RNA_input,
-                                                      maximum_network_depth = max_depth+1,
+                                                      maximum_network_depth = max_depth,
                                                       remove_unexpressed_nodes = T,
                                                       filter_tf_gene_interaction_by_optimization = T,
                                                       CARNIVAL_options = my_options)

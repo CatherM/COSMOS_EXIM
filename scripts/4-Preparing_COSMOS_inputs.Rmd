@@ -145,7 +145,7 @@ collectri_regulons <- get_collectri(organism = 'human', split_complexes = FALSE)
 collectri_regulons <- decoupleR::get_collectri()
 collectri_regulons <- collectri_regulons[!(is.na(collectri_regulons[, 2]) | collectri_regulons[, 2] == ""), ]
 ```
-For some reason, using the above df does not work. The one below does, but it needs moer preprocessing. Thus, the following two chunks are the importing and preprocessing of these regulons.
+For some reason, using the above df does not work. The one below does, but it needs more preprocessing. Thus, the following two chunks are the importing and preprocessing of these regulons.
 
 Same CollecTRI regulons, different route:
 ```{r, message=FALSE, warning= FALSE}

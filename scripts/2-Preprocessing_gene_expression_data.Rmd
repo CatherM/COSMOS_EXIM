@@ -109,6 +109,7 @@ zscore <- function(x){
 
 ```
 
+In the chunk above, functions are created for cleaning the data and scaling the data (using z-score normalization) which I also do manually downstream. I have tested the functions in the chunk below. As you can see, I have not used them below. 
 ```{r}
 # hist(as.numeric(unlist(T0_RNA_log2_FPKM)), breaks = 1000)
 # T0_RNA_log2_FPKM_cleaned <- clean_gene_expression_data(T0_RNA_log2_FPKM)
@@ -132,7 +133,7 @@ hist(as.numeric(unlist(T48_RNA_log2_FPKM)), breaks = 1000)
 ```
 
 ### Filtering Data
-Many <1, so let's remove those and plot again:
+Many values < 1, so let's remove those and plot again:
 ```{r}
 
 T0_RNA_log2_FPKM[T0_RNA_log2_FPKM < 1] <- NA
@@ -171,7 +172,10 @@ hist(as.numeric(unlist(T48_RNA_log2_FPKM)), breaks = 1000)
 
 
 ```
+
 ### Scaling data
+Next, data is scaled using Z-score normalization. This is mainly adapted from the original cosmosR pipeline. Z-score normalization is applied to scale the data so each value is between -2 and 2. Doing this ensures that clear outliers will not influence machine learning models as much when fitting a model. 
+
 ```{r}
 
 # test <- as.data.frame(t(apply(T0_RNA_log2_FPKM,1, zscore)))

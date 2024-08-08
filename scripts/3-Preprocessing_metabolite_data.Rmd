@@ -79,10 +79,160 @@ rm(T48_path)
 Plotting the data to see the distribution is the first step to understanding our data
 
 ```{r}
-hist(as.numeric(unlist(log2(T0_metabs_hmdb))), breaks = 500)
-hist(as.numeric(unlist(log2(T48_metabs_hmdb))), breaks = 500)
+hist(as.numeric(unlist(log2(T0_metabs_hmdb))), breaks = 250,
+     main = "Histogram of metabolite values",
+     xlab = "Log2 value")
+mtext("Unstimulated CD3 T cells of HD and CLL patients", side = 3, line = 0.5)
+
+
+hist(as.numeric(unlist(log2(T48_metabs_hmdb))), breaks = 250,
+     main = "Histogram of metabolite values",
+     xlab = "Log2 value")
+mtext("CD3 T cells of HD and CLL patients 48h after CD3 CD28 stimulation", side = 3, line = 0.5)
+
 
 ```
+Now, let's also explore the data without log2 transformation:
+```{r}
+hist(as.numeric(unlist(T0_metabs_hmdb)), breaks = 250,
+     main = "Histogram of metabolite values",
+     xlab = "Untransformed value")
+mtext("Unstimulated CD3 T cells of HD and CLL patients", side = 3, line = 0.5)
+
+
+hist(as.numeric(unlist(T48_metabs_hmdb)), breaks = 250,
+     main = "Histogram of metabolite values",
+     xlab = "Untransformed value")
+mtext("CD3 T cells of HD and CLL patients 48h after CD3 CD28 stimulation", side = 3, line = 0.5)
+```
+okay. Not great.Let's try filtering this data on very low values
+```{r}
+T0_metabs_hmdb[T0_metabs_hmdb < 0.00001] <- NA 
+T48_metabs_hmdb[T48_metabs_hmdb < 0.00001] <- NA 
+
+hist(as.numeric(unlist(T0_metabs_hmdb)), breaks = 250,
+     main = "Histogram of metabolite values",
+     xlab = "Untransformed value")
+mtext("Unstimulated CD3 T cells of HD and CLL patients", side = 3, line = 0.5)
+
+
+hist(as.numeric(unlist(T48_metabs_hmdb)), breaks = 250,
+     main = "Histogram of metabolite values",
+     xlab = "Untransformed value")
+mtext("CD3 T cells of HD and CLL patients 48h after CD3 CD28 stimulation", side = 3, line = 0.5)
+```
+
+Now, transformed but per sample
+T0:
+```{r}
+# Loop through each column to create histograms
+par(mfrow = c(2, 5))
+for (col_name in colnames(T0_metabs_hmdb)) {
+  # Extract the current column and convert to log2 values
+  current_col <- as.numeric(unlist(T0_metabs_hmdb[[col_name]]))
+  
+  # Create a histogram for the current column
+  hist(current_col, breaks = 100,
+       main = paste("Hist of metab val", col_name),
+       xlab = "Untransformed value")
+  
+  # Add the subtitle below the main title
+  # mtext("Unstimulated CD3 T cells of both HD and CLL patients", side = 3, line = 0.5)
+  mtext("Unstim", side = 3, line = 0.5)
+
+}
+```
+T48:
+```{r}
+par(mfrow = c(2, 4))
+for (col_name in colnames(T48_metabs_hmdb)) {
+  # Extract the current column and convert to log2 values
+  current_col <- as.numeric(unlist(T48_metabs_hmdb[[col_name]]))
+  
+  # Create a histogram for the current column
+  hist(current_col, breaks = 100,
+       main = paste("Hist. metab values", col_name),
+       xlab = "Untransformed value")
+  
+  # Add the subtitle below the main title
+  # mtext("CD3 T cells of both HD and CLL patients 48h after CD3/CD28 stimulation", side = 3, line = 0.5)
+  mtext("T48", side = 3, line = 0.6)
+}
+```
+We want to know which metabolites are present in the lowest bins. Especially for CLL3045_T0 this can be interesting, as they have a lot of very low value outliers. 
+
+```{r}
+metabs_df  <- T0_metabs_hmdb
+# metabs_df <- T48_metabs_hmdb
+
+col_names <- colnames(metabs_df)
+
+# Initialize a list to store metabolite names in the lowest value bins for each column
+lowest_bins_metabolites <- list()
+
+# Loop through each column name to analyze the histograms
+for (col_name in col_names) {
+  # Extract the current column by name and convert to log2 values
+  current_col <- as.numeric(unlist(log2(metabs_df[[col_name]])))
+  
+  # Create a histogram for the current column without plotting it
+  hist_data <- hist(current_col, breaks = 50, plot = FALSE)
+  
+  # Find the lowest value bin with non-zero counts
+  lowest_bin <- which.min(hist_data$counts[hist_data$counts > 0])
+  
+  # Find the range of values in the lowest bin
+  bin_range <- hist_data$breaks[c(lowest_bin, lowest_bin + 1)]
+  
+  # Identify metabolites in the lowest value bin
+  metabolites_in_bin <- rownames(metabs_df)[log2(metabs_df[[col_name]]) >= bin_range[1]-100 & log2(metabs_df[[col_name]]) < bin_range[2]]
+  
+  # Store the results in the list
+  lowest_bins_metabolites[[col_name]] <- metabolites_in_bin
+}
+
+# Print the list of metabolites in the lowest value bins
+print(lowest_bins_metabolites)
+
+
+```
+
+```{r}
+# Assuming T0_metabs_hmdb is a data frame with metabolite names as rownames and samples as columns
+col_names <- colnames(T0_metabs_hmdb)
+
+# Initialize a list to store metabolite names in the lowest value bins for each column
+lowest_bins_metabolites <- list()
+
+# Loop through each column name to analyze the histograms
+for (col_name in col_names) {
+  # Extract the current column by name and convert to log2 values, replacing -Inf with the minimum non -Inf value minus some epsilon
+  current_col <- log2(T0_metabs_hmdb[[col_name]])
+  current_col[is.infinite(current_col)] <- min(current_col[!is.infinite(current_col)]) - 1
+
+  # Create a histogram for the current column without plotting it
+  hist_data <- hist(current_col, breaks = 250, plot = FALSE)
+  
+  # Find the lowest value bin with non-zero counts
+  lowest_bin <- which.min(hist_data$counts[hist_data$counts > 0])
+  
+  # Find the range of values in the lowest bin
+  bin_range <- hist_data$breaks[c(lowest_bin, lowest_bin + 1)]
+  
+  # Identify metabolites in the lowest value bin or where the value is -Inf
+  metabolites_in_bin <- rownames(T0_metabs_hmdb)[(current_col >= bin_range[1]-13 & current_col < bin_range[2]) | is.infinite(log2(T0_metabs_hmdb[[col_name]]))]
+  
+  # Store the results in the list
+  lowest_bins_metabolites[[col_name]] <- metabolites_in_bin
+}
+
+# Print the list of metabolites in the lowest value bins
+print(lowest_bins_metabolites)
+
+```
+
+
+
 
 Heatmaps:
 ```{r}
@@ -102,8 +252,8 @@ For log2(T48), The outliers are -Inf (these are 0's)
 
 Removing outliers:
 ```{r}
-T0_metabs_hmdb[log2(T0_metabs_hmdb) < -30] <- NA 
-T48_metabs_hmdb[log2(T48_metabs_hmdb) == -Inf] <- NA 
+# T0_metabs_hmdb[log2(T0_metabs_hmdb) < -30] <- NA 
+# T48_metabs_hmdb[log2(T48_metabs_hmdb) == -Inf] <- NA 
 
 ```
 
@@ -124,11 +274,11 @@ Removing new outliers
 - For log2 T48: <-16 and >-6
 
 ```{r}
-T0_metabs_hmdb[log2(T0_metabs_hmdb) < -1] <- NA 
-T0_metabs_hmdb[log2(T0_metabs_hmdb) > 11 ] <- NA 
-
-T48_metabs_hmdb[log2(T48_metabs_hmdb) < -16] <- NA 
-T48_metabs_hmdb[log2(T48_metabs_hmdb) > 6] <- NA 
+# T0_metabs_hmdb[log2(T0_metabs_hmdb) < -1] <- NA 
+# T0_metabs_hmdb[log2(T0_metabs_hmdb) > 11 ] <- NA 
+# 
+# T48_metabs_hmdb[log2(T48_metabs_hmdb) < -16] <- NA 
+# T48_metabs_hmdb[log2(T48_metabs_hmdb) > 6] <- NA 
 ```
 
 
@@ -136,10 +286,17 @@ The histogram values of (log) T48 are only negative. This means the m/z ratios a
 
 VSN normalization is used to adjust values to be able to compare across samples
 
+
+```{r}
+hist(as.numeric(unlist(log2(T0_metabs_hmdb))), breaks = 1000)
+hist(as.numeric(unlist(log2(T48_metabs_hmdb))), breaks = 1000)
+
+```
+
 ### VSN normalization
 First for T0
 ```{r}
-T0_metabs_hmdb <- T0_metabs_hmdb[,-4]
+# T0_metabs_hmdb <- T0_metabs_hmdb[,-4]
 fit <- vsnMatrix(as.matrix(T0_metabs_hmdb))
 meanSdPlot(fit)
 T0_metabs_hmdb <- as.data.frame(vsn::predict(fit,as.matrix(T0_metabs_hmdb)))
@@ -198,5 +355,43 @@ Laptop
 ############ Paths to write data to laptop ############ 
 # write.csv(T0_metabs_scaled,file = "../ourdata/metabolomic/T0_metabs_hmdb_scaled.csv")
 # write.csv(T48_metabs_scaled,file = "../ourdata/metabolomic/T48_metabs_hmdb_scaled.csv")
+```
+
+
+Explore again per sample:
+```{r}
+par(mfrow = c(2, 5))
+for (col_name in colnames(T0_metabs_scaled)) {
+  # Extract the current column and convert to log2 values
+  current_col <- as.numeric(unlist(T0_metabs_scaled[[col_name]]))
+  
+  # Create a histogram for the current column
+  hist(current_col, breaks = 100,
+       main = paste("Hist of metab val", col_name),
+       xlab = "Transformed values")
+  
+  # Add the subtitle below the main title
+  # mtext("Unstimulated CD3 T cells of both HD and CLL patients", side = 3, line = 0.5)
+  mtext("Unstim", side = 3, line = 0.5)
+
+}
+```
+```{r}
+par(mfrow = c(2, 4))
+for (col_name in colnames(T48_metabs_scaled)) {
+  # Extract the current column and convert to log2 values
+  current_col <- as.numeric(unlist(T48_metabs_scaled[[col_name]]))
+  
+  # Create a histogram for the current column
+  hist(current_col, breaks = 100,
+       main = paste("Hist of metab val", col_name),
+       xlab = "Transformed values")
+  
+  # Add the subtitle below the main title
+  # mtext("Unstimulated CD3 T cells of both HD and CLL patients", side = 3, line = 0.5)
+  mtext("T48", side = 3, line = 0.5)
+
+}
+
 ```
 
