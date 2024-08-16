@@ -14,11 +14,11 @@ meta_network <- meta_network_cleanup(meta_network)
 load(T0_input_path)
 load(T48_input_path)
 
-cosmos_inputs <- T0_cosmos_inputs # T0 or T48
-stim_point <- "T0"
+cosmos_inputs <- T48_cosmos_inputs # T0 or T48
+stim_point <- "T48"
 names(cosmos_inputs)
 
-max_depth <- 2
+max_depth <- 4
 # dir.create(file.path("L:/basic/divg/EXIM/ImmunoHematology/Cathy Magnée/Scripts/COSMOS_EXIM", paste("results/Network_files_csvs/d", max_depth, sep = "")))
 seconds_per_step <- 3600/2
 
@@ -66,18 +66,14 @@ for (patient in names(cosmos_inputs)){
   sig_input <- cosmos_inputs[[patient]]$TF_scores
   metab_input <- cosmos_inputs[[patient]]$metabolomic 
   RNA_input <- cosmos_inputs[[patient]]$RNA
-  
-  
 
   # Filter inputs
   metab_input <- prepare_metab_inputs(metab_input, c("c","m"))
   
-  # sig_input <- sig_input[abs(sig_input) > 0.5] # This is 1 for now, leaving out only the least significant measurements
-  # metab_input <- metab_input[abs(metab_input) > 0.5] # See above.
-  filter <- 0
   
-  result_path <- paste("../results/Network_files_csvs/d", paste(max_depth, paste("/f", paste (filter, paste("/"), paste(stim_point, "/", sep = ""), sep = ""), sep = ""), sep = ""), sep = "")
-  dir.create(file.path(getwd(), result_path), showWarnings = TRUE)
+  filter <- 125
+  sig_input <- sig_input[abs(sig_input) > 1.5] 
+  metab_input <- metab_input[abs(metab_input) > 1.25] 
   
   metab_input <- cosmosR:::filter_input_nodes_not_in_pkn(metab_input, meta_network)
   sig_input <- cosmosR:::filter_input_nodes_not_in_pkn(sig_input, meta_network)
@@ -186,16 +182,19 @@ for (patient in names(cosmos_inputs)){
   ATT_full$NodeType <- ifelse(ATT_full$Nodes %in% C_nodes,"C",ifelse(ATT_full$Nodes %in% P_nodes,"P",ifelse(ATT_full$Nodes %in% M_nodes,"M","")))
   
   # Automatically create path to save results, so it does not get messy in my folders
-  core_path <- "L:/basic/divg/EXIM/ImmunoHematology/Cathy Magnée/Scripts/COSMOS_EXIM"
+  core_path <- "L:/basic/divg/EXIM/ImmunoHematology/Cathy Magnée/Data/CD3_HDvsCLL/CosmosR"
   
-  result_path <- paste("results/Network_files_csvs/d", max_depth, sep = "") # Add depth folder
+  result_path <- paste("/Networks/d", max_depth, sep = "") # Add depth folder
   dir.create(file.path(core_path, result_path), showWarnings = FALSE)
   result_path <- paste(result_path, paste("/f", filter, sep = ""), sep = "") # Add filter folder
   dir.create(file.path(core_path, result_path), showWarnings = FALSE)
-  result_path <- paste(result_path, paste("/", stim_point, sep = ""), sep = "") # Add Time point folder
+  result_path <- paste(result_path, paste("/", stim_point, sep = ""), sep = "") # Add stim/unstim point folder
+  dir.create(file.path(core_path, result_path), showWarnings = FALSE)
+  result_path <- paste(result_path, "/csvs/", sep = "") # Add csv folder
   dir.create(file.path(core_path, result_path), showWarnings = FALSE)
   
-  result_path <- paste("../results/Network_files_csvs/d", paste(max_depth, paste("/f", paste (filter, paste("/"), paste(stim_point, "/", sep = ""), sep = ""), sep = ""), sep = ""), sep = "")
+  result_path <- paste(core_path, result_path, sep = "")
+  # result_path <- paste("../results/Network_files_csvs/d", paste(max_depth, paste("/f", paste (filter, paste("/"), paste(stim_point, "/", sep = ""), sep = ""), sep = ""), sep = ""), sep = "")
   write_csv(SIF_full, file = paste(result_path, paste(patient, "_SIF_full.csv", sep = ""), sep = ""))
   write_csv(ATT_full, file = paste(result_path, paste(patient, "_ATT_full.csv", sep = ""), sep = ""))
   
@@ -211,4 +210,6 @@ for (patient in names(cosmos_inputs)){
 end.time <- Sys.time()
 time.taken <- round(end.time - start.time, 2)
 time.taken
+# 
 
+# Save the datafile of the path: 

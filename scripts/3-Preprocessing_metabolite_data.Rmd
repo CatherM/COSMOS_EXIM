@@ -11,14 +11,14 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ## Preprocessing metabolomics data 
 
-This document describes the preprocessing of metabolomic T cell data. It is based off the preprocessing documents in the FACTOR_Cosmos No_MOFA branch by Saezlab on github. This document is preceded by the 2 - Preprocessing transcriptomic data R markdown document and precedes the 4 - Preparing COSMOS inputs R markdown document. 
+This document describes the preprocessing of metabolomic CD3 T cell data. It is based off the preprocessing documents in the FACTOR_Cosmos No_MOFA branch by Saezlab on github. This document is preceded by the 2 - Preprocessing transcriptomic data R markdown document and precedes the 4 - Preparing COSMOS inputs R markdown document. 
 
-This document is annotated to explain the steps and the choices that were made durnig this project. Other options will be highlighted. 
+This document is annotated to explain the steps and the choices that were made during this project. Other options will be highlighted. 
 
 Document summary:
-The main goal of this document is to transform the raw metabolite data into data that can be compared across sample. This will be done in the following steps and using the following tools:
-1. Two steps of filtering (outliers)
-2. Normalization using vsn normalization
+The main goal of this document is to transform the raw metabolite data into data that can be compared across samples and the sample groups. This will be done in the following steps and using the following tools:
+1. Filtering outliers
+2. Normalization using VSN normalization
 3. Scaling using Z-score normalization.
 
 #### Loading
@@ -30,45 +30,50 @@ library(reshape2)
 library(pheatmap)
 library(vsn)
 library(tibble)
+library(RColorBrewer)
 ```
 
 Data paths:
 Splitting these in AMC and Laptop, so it is easier to switch. 
 
-AMC:
+AMC paths:
 ```{r}
+# Metabolite names as rownames
 # T0_path <- "L:\\basic\\divg\\EXIM\\ImmunoHematology\\Cathy Magnée\\Data\\CD3_HDvsCLL\\Metabolomic\\T0_metabs_raw.csv"
 # T48_path <- "L:\\basic\\divg\\EXIM\\ImmunoHematology\\Cathy Magnée\\Data\\CD3_HDvsCLL\\Metabolomic\\T48_metabs_raw.csv"
 
-# or hmdb?
+# HMDB IDs as rownames
 T0_path <- "L:\\basic\\divg\\EXIM\\ImmunoHematology\\Cathy Magnée\\Data\\CD3_HDvsCLL\\Metabolomic\\T0_metabs_hmdb.csv"
 T48_path <- "L:\\basic\\divg\\EXIM\\ImmunoHematology\\Cathy Magnée\\Data\\CD3_HDvsCLL\\Metabolomic\\T48_metabs_hmdb.csv"
 
 ```
-Laptop:
+
+Laptop paths:
 ```{r}
+# Metabolite names as rownames
 # T0_path <- "../ourdata/metabolomic/T0_metabs_raw.csv"
 # T48_path <- "../ourdata/metabolomic/T48_metabs_raw.csv"
 
-# or hmdb?
+# HMDB IDs as rownames
 # T0_path <- "../ourdata/metabolomic/T0_metabs_hmdb.csv"
 # T48_path <- "../ourdata/metabolomic/T48_metabs_hmdb.csv"
 ```
 
-Loading data and removing paths:
-```{r}
+Loading data and removing path variables:
+```{r, message=FALSE}
+# Metabolite names as rownames
 # T0_metabs_raw <- as.data.frame(read_csv(T0_path))
 # T48_metabs_raw <- as.data.frame(read_csv(T48_path))
 
-# or hmdb?
-T0_metabs_hmdb <- as.data.frame(read_csv(T0_path))
-T48_metabs_hmdb <- as.data.frame(read_csv(T48_path))
+# HMDB IDs as rownames
+T0_metabs_hmdb <- as.data.frame(read_csv(T0_path, show_col_types = FALSE))
+T48_metabs_hmdb <- as.data.frame(read_csv(T48_path, show_col_types = FALSE))
 
-# Adjusting first column to rownames
+# First column -> Rownames, then remove first column
 T0_metabs_hmdb <- tibble::column_to_rownames(T0_metabs_hmdb, var = "...1")
 T48_metabs_hmdb <- tibble::column_to_rownames(T48_metabs_hmdb, var = "...1")
 
-# Removing redundant paths
+# Removing now-redundant path variables
 rm(T0_path)
 rm(T48_path)
 
@@ -76,7 +81,7 @@ rm(T48_path)
 
 ### Plotting and filtering
 
-Plotting the data to see the distribution is the first step to understanding our data
+Plotting the data to see the distribution is the first step to understanding our data. Let's first see the histograms. 
 
 ```{r}
 hist(as.numeric(unlist(log2(T0_metabs_hmdb))), breaks = 250,
@@ -92,6 +97,62 @@ mtext("CD3 T cells of HD and CLL patients 48h after CD3 CD28 stimulation", side 
 
 
 ```
+There are some outliers in the left-most bins. This is especially notable in the histogram representing the log-transformed values in the unstimulated dataset. What metabolites are causing these left-most bins and why are the values so low?
+Let's investigate this in the following chunk, in which we check the lowest-most bin:
+
+```{r}
+# Choose here which timepoint to analyze
+metabs_df <- T48_metabs_hmdb
+
+# Apply log2 transformation safely
+log_metabs_df <- log2(metabs_df)
+
+# Create a histogram for the entire dataset (flattened into a single vector)
+hist_data <- hist(as.numeric(unlist(log_metabs_df)), breaks = 250, plot = FALSE)
+
+# Find the lowest value bin with non-zero counts
+lowest_bin <- min(which(hist_data$counts > 0))
+
+# Find the range of values in the lowest bin
+bin_range <- hist_data$breaks[c(lowest_bin, lowest_bin + 1)]
+
+# Debugging: Print the range of the lowest bin
+print(paste("Lowest bin range:", bin_range[1], "to", bin_range[2]))
+
+# Identify metabolites in the lowest value bin
+metabolites_in_bin <- rownames(metabs_df)[apply(log_metabs_df, 1, function(row) any(row >= bin_range[1] & row < bin_range[2]))]
+
+# Debugging: Check if NA values exist in the resulting list
+if (any(is.na(metabolites_in_bin))) {
+  warning("NA values found in the metabolites_in_bin list.")
+}
+
+# Print the list of metabolites in the lowest value bins
+print(metabolites_in_bin)
+
+```
+Let's remove the (very low value) outliers and explore the dataset again:
+```{r}
+T0_metabs_hmdb[T0_metabs_hmdb < 0.00001] <- NA 
+T48_metabs_hmdb[T48_metabs_hmdb < 0.00001] <- NA 
+
+hist(as.numeric(unlist(log2(T0_metabs_hmdb))), breaks = 250,
+     main = "Histogram of metabolite values",
+     xlab = "Log2 value")
+mtext("Unstimulated CD3 T cells of HD and CLL patients", side = 3, line = 0.5)
+mtext("After outlier removal", side = 3, line = -0.5)
+
+
+
+hist(as.numeric(unlist(log2(T48_metabs_hmdb))), breaks = 250,
+     main = "Histogram of metabolite values",
+     xlab = "Log2 value")
+mtext("CD3 T cells of HD and CLL patients 48h after CD3 CD28 stimulation", side = 3, line = 0.5)
+mtext("After outlier removal", side = 3, line = -0.5)
+
+
+```
+This looks better! 
 Now, let's also explore the data without log2 transformation:
 ```{r}
 hist(as.numeric(unlist(T0_metabs_hmdb)), breaks = 250,
@@ -105,31 +166,22 @@ hist(as.numeric(unlist(T48_metabs_hmdb)), breaks = 250,
      xlab = "Untransformed value")
 mtext("CD3 T cells of HD and CLL patients 48h after CD3 CD28 stimulation", side = 3, line = 0.5)
 ```
-okay. Not great.Let's try filtering this data on very low values
+These two figures are hard to interpret. Let's explore this data per sample
+Okay. Not great. Let's try gain after filtering this data on the very low values (outliers).
+
+
 ```{r}
-T0_metabs_hmdb[T0_metabs_hmdb < 0.00001] <- NA 
-T48_metabs_hmdb[T48_metabs_hmdb < 0.00001] <- NA 
-
-hist(as.numeric(unlist(T0_metabs_hmdb)), breaks = 250,
-     main = "Histogram of metabolite values",
-     xlab = "Untransformed value")
-mtext("Unstimulated CD3 T cells of HD and CLL patients", side = 3, line = 0.5)
-
-
-hist(as.numeric(unlist(T48_metabs_hmdb)), breaks = 250,
-     main = "Histogram of metabolite values",
-     xlab = "Untransformed value")
-mtext("CD3 T cells of HD and CLL patients 48h after CD3 CD28 stimulation", side = 3, line = 0.5)
-```
-
-Now, transformed but per sample
-T0:
-```{r}
-# Loop through each column to create histograms
+metabs_df <- T0_metabs_hmdb
 par(mfrow = c(2, 5))
-for (col_name in colnames(T0_metabs_hmdb)) {
+
+# metabs_df <- T48_metabs_hmdb
+# par(mfrow = c(2, 4))
+
+# Loop through each column to create histograms
+
+for (col_name in colnames(metabs_df)) {
   # Extract the current column and convert to log2 values
-  current_col <- as.numeric(unlist(T0_metabs_hmdb[[col_name]]))
+  current_col <- as.numeric(unlist(metabs_df[[col_name]]))
   
   # Create a histogram for the current column
   hist(current_col, breaks = 100,
@@ -138,64 +190,14 @@ for (col_name in colnames(T0_metabs_hmdb)) {
   
   # Add the subtitle below the main title
   # mtext("Unstimulated CD3 T cells of both HD and CLL patients", side = 3, line = 0.5)
-  mtext("Unstim", side = 3, line = 0.5)
+  # mtext("T0", side = 3, line = 0.5)
+  # mtext("T48", side = 3, line = 0.5)
 
 }
+par(mfrow = c(1, 1))
 ```
-T48:
-```{r}
-par(mfrow = c(2, 4))
-for (col_name in colnames(T48_metabs_hmdb)) {
-  # Extract the current column and convert to log2 values
-  current_col <- as.numeric(unlist(T48_metabs_hmdb[[col_name]]))
-  
-  # Create a histogram for the current column
-  hist(current_col, breaks = 100,
-       main = paste("Hist. metab values", col_name),
-       xlab = "Untransformed value")
-  
-  # Add the subtitle below the main title
-  # mtext("CD3 T cells of both HD and CLL patients 48h after CD3/CD28 stimulation", side = 3, line = 0.5)
-  mtext("T48", side = 3, line = 0.6)
-}
-```
-We want to know which metabolites are present in the lowest bins. Especially for CLL3045_T0 this can be interesting, as they have a lot of very low value outliers. 
 
-```{r}
-metabs_df  <- T0_metabs_hmdb
-# metabs_df <- T48_metabs_hmdb
-
-col_names <- colnames(metabs_df)
-
-# Initialize a list to store metabolite names in the lowest value bins for each column
-lowest_bins_metabolites <- list()
-
-# Loop through each column name to analyze the histograms
-for (col_name in col_names) {
-  # Extract the current column by name and convert to log2 values
-  current_col <- as.numeric(unlist(log2(metabs_df[[col_name]])))
-  
-  # Create a histogram for the current column without plotting it
-  hist_data <- hist(current_col, breaks = 50, plot = FALSE)
-  
-  # Find the lowest value bin with non-zero counts
-  lowest_bin <- which.min(hist_data$counts[hist_data$counts > 0])
-  
-  # Find the range of values in the lowest bin
-  bin_range <- hist_data$breaks[c(lowest_bin, lowest_bin + 1)]
-  
-  # Identify metabolites in the lowest value bin
-  metabolites_in_bin <- rownames(metabs_df)[log2(metabs_df[[col_name]]) >= bin_range[1]-100 & log2(metabs_df[[col_name]]) < bin_range[2]]
-  
-  # Store the results in the list
-  lowest_bins_metabolites[[col_name]] <- metabolites_in_bin
-}
-
-# Print the list of metabolites in the lowest value bins
-print(lowest_bins_metabolites)
-
-
-```
+Let's analyze for each sample what metabolites are present in the lowest (transformed) bins:
 
 ```{r}
 # Assuming T0_metabs_hmdb is a data frame with metabolite names as rownames and samples as columns
@@ -227,81 +229,88 @@ for (col_name in col_names) {
 }
 
 # Print the list of metabolites in the lowest value bins
-print(lowest_bins_metabolites)
+# View(lowest_bins_metabolites)
 
 ```
 
+These are often the same metabolite. 
+As the individual plots show, there are often 'outlier' values in the right-most part of the plot. Let's find out which metabolites cause this right-most skewing. 
+In the chunk below, we try to find the metabolites in the five right-most histogram bins of untransformed data per sample.
+```{r}
+DF <- T0_metabs_hmdb
+# DF <- T48_metabs_hmdb
+col_names <- colnames(DF)
+# Initialize a list to store metabolite names in the 5 right-most bins for each column
+rightmost_bins_metabolites <- list()
 
+# Loop through each column name to analyze the histograms
+for (col_name in col_names) {
+  # Extract the current column by name (original values, no log2)
+  current_col <- as.numeric(DF[[col_name]])
 
+  # Create a histogram for the current column without plotting it
+  hist_data <- hist(current_col, breaks = 50, plot = FALSE)
+  
+  # Find the indices of the non-empty bins
+  non_empty_bins <- which(hist_data$counts > 0)
+  
+  # Determine the range of bins to consider (the 5 right-most non-empty bins)
+  bins_to_consider <- tail(non_empty_bins, 5)
+  
+  # Initialize a list to store metabolites for the current column
+  metabolites_list <- list()
+
+  # Loop through the 5 right-most bins
+  for (bin_index in bins_to_consider) {
+    # Find the range of values in the current bin
+    bin_range <- hist_data$breaks[c(bin_index, bin_index + 1)]
+    
+    # Identify metabolites in the current bin
+    metabolites_in_bin <- rownames(DF)[(current_col >= bin_range[1] & current_col < bin_range[2])]
+    
+    # Store the metabolites in the list for the current bin
+    metabolites_list[[paste0("Bin_", bin_index)]] <- metabolites_in_bin
+  }
+  
+  # Store the results for the current column in the overall list
+  rightmost_bins_metabolites[[col_name]] <- metabolites_list
+}
+
+# Print the list of metabolites in the 5 right-most non-empty bins
+# View(rightmost_bins_metabolites)
+
+```
+
+Let's now explore our data further.
 
 Heatmaps:
 ```{r}
-pheatmap(log2(T0_metabs_hmdb), show_colnames = F, show_rownames = F) 
+pheatmap(log2(T0_metabs_hmdb), show_colnames = T, show_rownames = F, color = hcl.colors(50, "Oslo")) 
 
-# pheatmap(abs(log2(T48_metabs_hmdb)), show_colnames = F, show_rownames = F)
+pheatmap(abs(log2(T48_metabs_hmdb)), show_colnames = T, show_rownames = F, color = hcl.colors(50, "Oslo")) 
 
 ```
 
-
-In the T48 dataset the histogram of the log2 values are all negative. This means all values are between 0 and 1. This should be adjusted for later wehen we use VSN normalization
-
-The T0 heatmap also does not show much interesting as there are low values skewing the heatmap.
-
-For the log2(T0) dataset, there are a some outliers <-30
-For log2(T48), The outliers are -Inf (these are 0's)
-
-Removing outliers:
+Re-explore histogram (after outlier removal):
 ```{r}
-# T0_metabs_hmdb[log2(T0_metabs_hmdb) < -30] <- NA 
-# T48_metabs_hmdb[log2(T48_metabs_hmdb) == -Inf] <- NA 
-
-```
-
-```{r}
-hist(as.numeric(unlist(log2(T0_metabs_hmdb))), breaks = 1000)
-hist(as.numeric(unlist(log2(T48_metabs_hmdb))), breaks = 1000)
-
-```
-Heatmaps after outlier removal:
-```{r}
-pheatmap(log2(T0_metabs_hmdb), show_colnames = F, show_rownames = F) 
-
-pheatmap(abs(log2(T48_metabs_hmdb)), show_colnames = F, show_rownames = F)
-```
-
-Removing new outliers
-- For log2 T0: <-1 and> 11
-- For log2 T48: <-16 and >-6
-
-```{r}
-# T0_metabs_hmdb[log2(T0_metabs_hmdb) < -1] <- NA 
-# T0_metabs_hmdb[log2(T0_metabs_hmdb) > 11 ] <- NA 
-# 
-# T48_metabs_hmdb[log2(T48_metabs_hmdb) < -16] <- NA 
-# T48_metabs_hmdb[log2(T48_metabs_hmdb) > 6] <- NA 
+hist(as.numeric(unlist(log2(T0_metabs_hmdb))), breaks = 200)
+hist(as.numeric(unlist(log2(T48_metabs_hmdb))), breaks = 200)
 ```
 
 
-The histogram values of (log) T48 are only negative. This means the m/z ratios are all between 0-1. 
-
-VSN normalization is used to adjust values to be able to compare across samples
-
-
-```{r}
-hist(as.numeric(unlist(log2(T0_metabs_hmdb))), breaks = 1000)
-hist(as.numeric(unlist(log2(T48_metabs_hmdb))), breaks = 1000)
-
-```
+The histogram values of the log2-tranformed T48 dataset are all negative. This means the m/z ratio values are all between 0-1. 
+VSN normalization is used to adjust values to be able to compare across samples.
 
 ### VSN normalization
 First for T0
 ```{r}
-# T0_metabs_hmdb <- T0_metabs_hmdb[,-4]
+T0_metabs_hmdb <- T0_metabs_hmdb[,-4]
 fit <- vsnMatrix(as.matrix(T0_metabs_hmdb))
 meanSdPlot(fit)
 T0_metabs_hmdb <- as.data.frame(vsn::predict(fit,as.matrix(T0_metabs_hmdb)))
 
 ```
+
 Note that in the above chunk, CLL2474 is removed from the dataset as it proved to be an outlier in the downstream analysis. I do not want this to influence the vsnMatrix normalization. 
 
 Then for T48:
@@ -312,33 +321,46 @@ T48_metabs_hmdb <- as.data.frame(vsn::predict(fit,as.matrix(T48_metabs_hmdb)))
 ```
 
 ```{r}
-pheatmap(T0_metabs_hmdb[complete.cases(T0_metabs_hmdb),], show_colnames = T, show_rownames = F, cluster_rows = F) # , color = colorRampPalette(c("lightgrey","cornflowerblue", "blue"))(100)
+pheatmap(T0_metabs_hmdb[complete.cases(T0_metabs_hmdb),], show_colnames = T, show_rownames = F, cluster_rows = F , color = hcl.colors(50, "Oslo")) 
 
-pheatmap(T48_metabs_hmdb[complete.cases(T48_metabs_hmdb),], show_colnames = T, show_rownames = F, cluster_rows = F) # , color = colorRampPalette(c("forestgreen","lightgrey", "blue"))(100))  
+pheatmap(T48_metabs_hmdb[complete.cases(T48_metabs_hmdb),], show_colnames = T, show_rownames = F, cluster_rows = F, color = hcl.colors(50, "Oslo"))  
 ```
 
 ### Scaling using Z-normalization
 T0:
 ```{r}
-
+# Scaling using Z-normalization:
 SDs <- apply(T0_metabs_hmdb,1,function(x){sd(x,na.rm = T)})
 means <- rowMeans(T0_metabs_hmdb, na.rm = T)
 T0_metabs_scaled <- (T0_metabs_hmdb - means) / SDs
-pheatmap(T0_metabs_scaled[complete.cases(T0_metabs_scaled),], show_colnames = T, show_rownames = F, cluster_rows = F) 
 
-hist(as.numeric(unlist(T0_metabs_scaled)), breaks = 1000) 
+# Data exploration
+pheatmap(T0_metabs_scaled[complete.cases(T0_metabs_scaled),], show_colnames = T, show_rownames = F, cluster_rows = F, color = hcl.colors(50, "Oslo"))
+
+hist(as.numeric(unlist(T0_metabs_scaled)), breaks = 250, 
+     main = "Histogram of unstim CD3 T cell metabolite values",
+     xlab = "Transformed m/z ratio values")
+mtext("Unstimulated CD3 T cells of HD and CLL patients", side = 3, line = 0.5)
+mtext("After outlier removal, VSNmatrix normalization and Z-score normalization", side = 3, line = -0.5) 
 ```
 
 CLL2474 is an outlier. For now, this one is taken out (this has been done previously)
 
 T48:
 ```{r}
+# Scaling using Z-normalization:
 SDs <- apply(T48_metabs_hmdb,1,function(x){sd(x,na.rm = T)})
 means <- rowMeans(T48_metabs_hmdb, na.rm = T)
 T48_metabs_scaled <- (T48_metabs_hmdb - means) / SDs
-pheatmap(T48_metabs_scaled[complete.cases(T48_metabs_scaled),], show_colnames = T, show_rownames = F, cluster_rows = F) 
 
-hist(as.numeric(unlist(T48_metabs_scaled)), breaks = 1000) 
+# Data exploration
+pheatmap(T48_metabs_scaled[complete.cases(T48_metabs_scaled),], show_colnames = T, show_rownames = F, cluster_rows = F, color = hcl.colors(50, "Oslo"))
+
+hist(as.numeric(unlist(T48_metabs_scaled)), breaks = 250, 
+     main = "Histogram of stimulated CD3 T cell metabolite values",
+     xlab = "Transformed m/z ratio values")
+mtext("CD3 T cells of HD and CLL patients, 48h after CD3 CD28 stimulation", side = 3, line = 0.5)
+mtext("After outlier removal, VSNmatrix normalization and Z-score normalization", side = 3, line = -0.5) 
 ```
 
 
@@ -358,12 +380,17 @@ Laptop
 ```
 
 
-Explore again per sample:
+In the chunks below, the data distribution is visualized again, per sample, via histograms: :
 ```{r}
-par(mfrow = c(2, 5))
-for (col_name in colnames(T0_metabs_scaled)) {
+metab_df <- T0_metabs_scaled
+par(mfrow = c(3, 3))
+
+# metab_df <- T48_metabs_scaled
+# par(mfrow = c(2, 4))
+
+for (col_name in colnames(metab_df)) {
   # Extract the current column and convert to log2 values
-  current_col <- as.numeric(unlist(T0_metabs_scaled[[col_name]]))
+  current_col <- as.numeric(unlist(metab_df[[col_name]]))
   
   # Create a histogram for the current column
   hist(current_col, breaks = 100,
@@ -376,22 +403,5 @@ for (col_name in colnames(T0_metabs_scaled)) {
 
 }
 ```
-```{r}
-par(mfrow = c(2, 4))
-for (col_name in colnames(T48_metabs_scaled)) {
-  # Extract the current column and convert to log2 values
-  current_col <- as.numeric(unlist(T48_metabs_scaled[[col_name]]))
-  
-  # Create a histogram for the current column
-  hist(current_col, breaks = 100,
-       main = paste("Hist of metab val", col_name),
-       xlab = "Transformed values")
-  
-  # Add the subtitle below the main title
-  # mtext("Unstimulated CD3 T cells of both HD and CLL patients", side = 3, line = 0.5)
-  mtext("T48", side = 3, line = 0.5)
 
-}
-
-```
 

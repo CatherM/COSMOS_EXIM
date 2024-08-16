@@ -19,71 +19,7 @@ This documents is the sixth in this project. The first goal is to make the netwo
 library(readr)
 library(dplyr)
 ```
-
-I am not sure yet to which extent I want to edit these networks one-by-one, or automatically. For now, we do one-by-one. Probably will automate later x
-
-Input which network you want to edit
-```{r}
-patient <- "CLL2479_T48" # Pick a person for who you want to make the network
-max_depth <- 4
-```
-
-Input paths AMC and laptop are the same:
-```{r}
-
-```
-But not all! AMC:
-```{r}
-# AMC
-# T0_input_path <- "L:\\basic\\divg\\EXIM\\ImmunoHematology\\Cathy Magnée\\Data\\CD3_HDvsCLL\\CosmosR\\T0_cosmos_inputs.RData"
-# T48_input_path <- "L:\\basic\\divg\\EXIM\\ImmunoHematology\\Cathy Magnée\\Data\\CD3_HDvsCLL\\CosmosR\\T48_cosmos_inputs.RData"
-```
-Laptop
-```{r}
-T0_input_path <- "../ourdata/cosmos/T0_cosmos_inputs.RData"
-T48_input_path <- "../ourdata/cosmos/T48_cosmos_inputs.RData"
-```
-
-
-```{r}
-SIF <- read_csv(SIF_path)
-ATT <- read_csv(ATT_path)
-```
-### Uniformity
-Removing the everything and the "__" from the names in columns $Node1 and $Node2
-
-```{r}
-SIF$Node1 <- sub(".*__", "", SIF$Node1)
-SIF$Node2 <- sub(".*__", "", SIF$Node2)
-ATT$Nodes<- sub(".*__", "", ATT$Nodes)
-
-SIF$Node1 <- sub("_c", "", SIF$Node1) # Not sure if I am here for this in particular
-SIF$Node2 <- sub("_c", "", SIF$Node2)
-ATT$Nodes<- sub("_c", "", ATT$Nodes)
-
-SIF$Node1 <- sub("_m", "", SIF$Node1)
-SIF$Node2 <- sub("_m", "", SIF$Node2)
-ATT$Nodes<- sub("_m", "", ATT$Nodes)
-
-
-```
-
-Remove duplicates and sum up their weights
-```{r}
-SIF <- SIF |>
-  filter(Node1 != Node2) |> # First removing nodes that are re-activating themselves
-  group_by(Node1, Sign, Node2) |>
-  summarize(Weight = sum(Weight), .groups='drop')
-
-```
-
-```{r}
-write_csv(SIF, file = paste("../results/processed_results/d", paste(max_depth, paste(patient, "_SIF_full.csv", sep = ""), sep = ""), sep = ""))
-write_csv(ATT, file = paste("../results/processed_results/d", paste(max_depth, paste(patient, "_ATT_full.csv",sep = ""), sep = ""), sep = ""))
-```
-
-
-Now in a loop:
+Loop:
 ```{r, include=FALSE}
 # T48_input_path <- "../ourdata/cosmos/T48_cosmos_inputs.RData" # Laptop only
 T48_input_path <- "L:\\basic\\divg\\EXIM\\ImmunoHematology\\Cathy Magnée\\Data\\CD3_HDvsCLL\\CosmosR\\T48_cosmos_inputs.RData"
@@ -95,25 +31,21 @@ load(T48_input_path)
 # T48_cosmos_inputs <- day2_cosmos_inputs #Laptop only
 
 # edit these based on variables just to create network
-cosmos_inputs <- T48_cosmos_inputs 
-max_depth <- 3 
-stim_point <- "T48"
-filter <- "f05" 
+cosmos_inputs <- T0_cosmos_inputs 
+max_depth <- 4
+stim_point <- "T0"
+filter <- "125" 
 
 # Path to where the data should be:
-data_path <- paste("../results/Network_files_csvs/d", paste(max_depth, paste("/", paste(filter, paste("/", paste (stim_point, "/", sep = ""), sep = ""), sep = ""), sep = ""), sep = ""), sep = "")
 
-# The result path is a bit more complicated, as it still needs to be created. Let's automize this:
-  core_path <- "L:/basic/divg/EXIM/ImmunoHematology/Cathy Magnée/Scripts/COSMOS_EXIM"
-  
-  # result_path <- paste("results/processed_results/d", max_depth, sep = "") # Add depth folder
-  # dir.create(file.path(core_path, result_path), showWarnings = FALSE)
-  # result_path <- paste(result_path, paste("/f", filter, sep = ""), sep = "") # Add filter folder
-  # dir.create(file.path(core_path, result_path), showWarnings = FALSE)
-  # result_path <- paste(result_path, paste("/", stim_point, sep = ""), sep = "") # Add Time point folder
-  # dir.create(file.path(core_path, result_path), showWarnings = FALSE)
-  # 
-  result_path <- paste("../", result_path, sep = "") # Actual result path
+core_path <- "L:/basic/divg/EXIM/ImmunoHematology/Cathy Magnée/Data/CD3_HDvsCLL/CosmosR"
+
+result_path <- paste("/Networks/d", max_depth, sep = "") # Add depth folder
+result_path <- paste(result_path, paste("/f", filter, sep = ""), sep = "") # Add filter folder
+result_path <- paste(result_path, paste("/", stim_point, sep = ""), sep = "") # Add stim/unstim point folder
+result_path <- paste(result_path, "/csvs/", sep = "") # Add csv folder
+
+data_path <- paste(core_path, result_path, sep = "")
 
 # Path to where result will be saved to:
 
@@ -133,10 +65,10 @@ data_path <- paste("../results/Network_files_csvs/d", paste(max_depth, paste("/"
 
 for (patient in names(cosmos_inputs)){
   # insert paths
-  SIF_path <- paste(data_path, paste("d", paste(max_depth, paste(patient, "_SIF_full.csv", sep = ""), sep = ""), sep = ""), sep = "")
+  SIF_path <- paste(data_path, paste(patient, "_SIF_full.csv", sep = ""), sep = "")
   SIF <- read_csv(SIF_path)
 
-  ATT_path <- paste(data_path, paste("d", paste(max_depth, paste(patient, "_ATT_full.csv",sep = ""), sep = ""), sep = ""), sep = "")
+  ATT_path <- paste(data_path, paste(patient, "_ATT_full.csv",sep = ""), sep = "")
   ATT <- read_csv(ATT_path)
   
   SIF$Node1 <- sub(".*__", "", SIF$Node1)
@@ -175,9 +107,9 @@ for (patient in names(cosmos_inputs)){
   temp <- paste("In_", patient,sep = "")
   ATT[temp] <- 1
  
-  
-  write_csv(SIF, file = paste("../results/processed_results/d", paste(max_depth, paste(patient, "_SIF_full.csv", sep = ""), sep = ""), sep = ""))
-  write_csv(ATT, file = paste("../results/processed_results/d", paste(max_depth, paste(patient, "_ATT_full.csv",sep = ""), sep = ""), sep = ""))
+  # Saving processed csvs
+  write_csv(SIF, file = paste(data_path, paste(patient, "_SIF_processed.csv", sep = ""), sep = ""))
+  write_csv(ATT, file = paste(data_path, paste(patient, "_ATT_processed.csv", sep = ""), sep = ""))
   
 }
 

@@ -44,6 +44,7 @@ library(dplyr)
 library(reshape2)
 library(pheatmap)
 library(vsn)
+library(stringr)
 ```
 
 This chunk shows all paths and is created so I do not have to go through this whole file to switch between laptop / Amsterdam AMC pc paths.
@@ -51,7 +52,9 @@ This chunk shows all paths and is created so I do not have to go through this wh
 ############ Paths to data AMC PC ############ 
 ## Gene expression
 rawcounts_path <- "L:\\basic\\divg\\EXIM\\ImmunoHematology\\Cathy Magnée\\Data\\CD3_HDvsCLL\\Transcriptomic\\EC024_raw counts.csv"
-rsem_count.path <- "L:/basic/divg/EXIM/ImmunoHematology/Elena Camerini/Bioinformatics/EC024_CJ_RNAseq/Raw data from alignment/rsem_count"
+# rsem_count.path <- "L:/basic/divg/EXIM/ImmunoHematology/Elena Camerini/Bioinformatics/EC024_CJ_RNAseq/Raw data from alignment/rsem_count"
+rsem_count.path <- "L:\\basic\\divg\\EXIM\\ImmunoHematology\\Cathy Magnée\\Data\\CD3_HDvsCLL\\Transcriptomic\\FPKM"
+
 ## Metabolites
 T0_path <- "L:\\basic\\divg\\EXIM\\ImmunoHematology\\Cathy Magnée\\Data\\CD3_HDvsCLL\\Metabolomic\\DataForStatistics_day0.csv"
 T48_path <- "L:\\basic\\divg\\EXIM\\ImmunoHematology\\Cathy Magnée\\Data\\CD3_HDvsCLL\\Metabolomic\\DataForStatistics_day2.csv"
@@ -122,21 +125,24 @@ RNA_FPKM$gene_id <- rownames(RNA_FPKM)
 # Path to files containing FPKM values 
 ########### AMC ############
 # rsem_count.path <- "L:/basic/divg/EXIM/ImmunoHematology/Elena Camerini/Bioinformatics/EC024_CJ_RNAseq/Raw data from alignment/rsem_count"
+# rsem_count.path <- "L:/basic/divg/EXIM/ImmunoHematology/Elena Camerini/Bioinformatics/EC024_CJ_RNAseq/Raw data from alignment/rsem_count"
 
 ############ Laptop ############ 
 # rsem_count.path <- "../ourdata/rsem_count"
 
-# genes.results files
+# genes.results files (All file names that have the FPKM values here)
 all_files <- list.files(path = rsem_count.path, pattern = "*.genes.results", full.names = TRUE)
 
+# for each HD / CLL patient
 for (col_name in colnames(RNA_rawcounts)) { 
-  
+  # Remove _T0 and T48 timestamp
+  # col_name <- str_extract(col_name, "[^_]+")
+  # Find their matching file
   matching_files <- grep(col_name, all_files, value=T)
 
   # If there is exactly one matching file, proceed
   if (length(matching_files) == 1) {
     file_path <- matching_files[1]
-    
     # Load the file into a dataframe called temp
     temp <- read.csv(file_path, sep = "\t")
     

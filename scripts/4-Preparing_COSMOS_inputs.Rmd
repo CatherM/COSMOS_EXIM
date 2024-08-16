@@ -61,7 +61,7 @@ library(dplyr)
 
 Writing down data paths. This goes in two separate chunks: One for my AMC pc and one for my laptop. This way, it is easier to switch between the two. 
 Note that at the bottom of this document, there will also be two chunks to switch between based on workstation for saving the end result of the script. 
-On that note.
+
 AMC:
 ```{r}
 ############ Paths to load data from AMC PC ############ 
@@ -91,16 +91,16 @@ Laptop:
 
 Loading data and removing paths:
 ```{r, message=FALSE, warning=FALSE}
-T0_metabolomic <- as.data.frame(read_csv(path_T0_metabolomic_data))
+T0_metabolomic <- as.data.frame(read_csv(path_T0_metabolomic_data, show_col_types = FALSE))
 names(T0_metabolomic)[names(T0_metabolomic) == "...1"] <- "metabolite"
 
-T0_transcriptomic <- as.data.frame(read_csv(path_T0_transcriptomic_data))
+T0_transcriptomic <- as.data.frame(read_csv(path_T0_transcriptomic_data, show_col_types = FALSE))
 rownames(T0_transcriptomic) <- T0_transcriptomic$...1
 
-T48_metabolomic <- as.data.frame(read_csv(path_T48_metabolomic_data))
+T48_metabolomic <- as.data.frame(read_csv(path_T48_metabolomic_data, show_col_types = FALSE))
 names(T48_metabolomic)[names(T48_metabolomic) == "...1"] <- "metabolite"
 
-T48_transcriptomic <-  as.data.frame(read_csv(path_T48_transcriptomic_data))
+T48_transcriptomic <-  as.data.frame(read_csv(path_T48_transcriptomic_data, show_col_types = FALSE))
 rownames(T48_transcriptomic) <- T48_transcriptomic$...1
 
 # CollecTRI <- decoupleR::get_collectri(organism='human', split_complexes=FALSE)
@@ -145,7 +145,7 @@ collectri_regulons <- get_collectri(organism = 'human', split_complexes = FALSE)
 collectri_regulons <- decoupleR::get_collectri()
 collectri_regulons <- collectri_regulons[!(is.na(collectri_regulons[, 2]) | collectri_regulons[, 2] == ""), ]
 ```
-For some reason, using the above df does not work. The one below does, but it needs more preprocessing. Thus, the following two chunks are the importing and preprocessing of these regulons.
+For some reason, using the above df does not work. The one below does, but it needs more preprocessing. Thus, the following two chunks are the importing and preprocessing of these regulons. In the end, we use both datasets.
 
 Same CollecTRI regulons, different route:
 ```{r, message=FALSE, warning= FALSE}
@@ -212,8 +212,7 @@ ci_regulons$mor[ci_regulons$mor == 0] <- -1
 Estimating TF activities.
 There are multiple methods available to estimate TF activities. In the original pipeline (Factor cosmos no mofa), the run_wmean function is used. The official source of DecoupleR [1] describes the following three as most consistently better-performing: consensus, multivariate linear model and ULM. 
 
-First, three methods are explored in the following three chunks. Then, the main method, which can be adjusted, is seperately applied to the T0 and T48 gene expression datasets to estimate TF activity.
-
+First, three methods are explored in the following three chunks. Then, the main method, which can be adjusted, is separately applied to the T0 and T48 gene expression datasets to estimate TF activity.
 
 ### Method exploration
 For now, methods wmean, Ulm, mlm and consensus are explored.

@@ -80,7 +80,6 @@ rm(T48_RNA_path)
 ```
 
 ### Create function to clean data
-
 ```{r}
 # Cleaning function
 clean_gene_expression_data <- function(RNA_log2_FPKM) {
@@ -110,6 +109,7 @@ zscore <- function(x){
 ```
 
 In the chunk above, functions are created for cleaning the data and scaling the data (using z-score normalization) which I also do manually downstream. I have tested the functions in the chunk below. As you can see, I have not used them below. 
+
 ```{r}
 # hist(as.numeric(unlist(T0_RNA_log2_FPKM)), breaks = 1000)
 # T0_RNA_log2_FPKM_cleaned <- clean_gene_expression_data(T0_RNA_log2_FPKM)
@@ -119,53 +119,72 @@ In the chunk above, functions are created for cleaning the data and scaling the 
 # hist(as.numeric(unlist(T0_RNA_log2_FPKM_cleaned[,c(1:8)])), breaks = 1000)
 # hist(as.numeric(unlist(T0_RNA_log2_FPKM_cleaned[,c(1:4)])), breaks = 1000)
 # hist(as.numeric(unlist(T0_RNA_log2_FPKM_cleaned[,c(5:8)])), breaks = 1000)
-
 ```
 
 
 ### Plotting data
-
-Day 0
+First, we explore the dataset by plotting it. E.g. as a histogram:
 ```{r}
-hist(as.numeric(unlist(T0_RNA_log2_FPKM)), breaks = 1000)
-hist(as.numeric(unlist(T48_RNA_log2_FPKM)), breaks = 1000)
+hist(as.numeric(unlist(T0_RNA_log2_FPKM)), breaks = 1000, 
+     main = "Histogram of unstimulated CD3 T cell gene expression values",
+     xlab = "log2-transformed RNA count value")
+mtext("CD3 T cells of HD and CLL patients", side = 3, line = 0.5)
+
+hist(as.numeric(unlist(T48_RNA_log2_FPKM)), breaks = 1000, 
+     main = "Histogram of stimulated CD3 T cell gene expression values",
+     xlab = "log2-transformed RNA count value")
+mtext("CD3 T cells of HD and CLL patients, 48h after CD3 CD28 stimulation", side = 3, line = 0.5)
 
 ```
+The large peak at 0 represents an enormous amount of genes for which no RNA is expressed. Let's remove the values under 1 and re-evaluate the data via another histogram. 
 
 ### Filtering Data
-Many values < 1, so let's remove those and plot again:
 ```{r}
 
 T0_RNA_log2_FPKM[T0_RNA_log2_FPKM < 1] <- NA
-hist(as.numeric(unlist(T0_RNA_log2_FPKM)), breaks = 1000) 
+
+hist(as.numeric(unlist(T0_RNA_log2_FPKM)), breaks = 1000, 
+     main = "Histogram of unstimulated CD3 T cell gene expression values",
+     xlab = "log2-transformed RNA count value")
+mtext("CD3 T cells of HD and CLL patients", side = 3, line = 0.5)
+mtext("After removal of values < 1", side = 3, line = -0.5) 
 
 T48_RNA_log2_FPKM[T48_RNA_log2_FPKM < 1] <- NA
-hist(as.numeric(unlist(T48_RNA_log2_FPKM)), breaks = 1000) 
+hist(as.numeric(unlist(T48_RNA_log2_FPKM)), breaks = 1000, 
+     main = "Histogram of unstimulated CD3 T cell gene expression values",
+     xlab = "log2-transformed RNA count value")
+mtext("CD3 T cells of HD and CLL patients, 48h after CD3 CD28 stimulation", side = 3, line = 0.5)
+mtext("After removal of values < 1", side = 3, line = -0.5) 
 ```
-
-Let's remove all rows (genes) where >25% is NA
-In a bigger dataset, 20% would be a nice cutoff. However, it is important to have more than 3 values when scaling RNA data. This is why we chose a 25% cutoff. 
-
-For T0, where there are 10 samples, this means to keep all samples where <8 out of 9 are NA. In other words, There need to be at least 2 measurements to keep this one. 
-For T48, this means to keep samples where less than 6.4 out of 8 are NA. In other words, There need to be at least 3 measurements for the gene to not be filtered out
+The next step is to remove all rows (genes) for which less than 3 values are available (less than 25% of the data).
 
 ```{r}
+# Removing gene rows where >25% of data is missing.
 T0_RNA_log2_FPKM <- T0_RNA_log2_FPKM[rowSums(is.na(T0_RNA_log2_FPKM)) < 0.75*ncol(T0_RNA_log2_FPKM),]
-
-hist(as.numeric(unlist(T0_RNA_log2_FPKM)), breaks = 1000) 
-
 T48_RNA_log2_FPKM <- T48_RNA_log2_FPKM[rowSums(is.na(T48_RNA_log2_FPKM)) < 0.75*ncol(T48_RNA_log2_FPKM),]
-hist(as.numeric(unlist(T48_RNA_log2_FPKM)), breaks = 1000) 
+
+# Vizualizing new dataset:
+hist(as.numeric(unlist(T0_RNA_log2_FPKM)), breaks = 1000, 
+     main = "Histogram of unstimulated CD3 T cell gene expression values",
+     xlab = "log2-transformed RNA count value")
+mtext("CD3 T cells of HD and CLL patients", side = 3, line = 0.5)
+mtext("After removal of values < 1 and genes where n < 3", side = 3, line = -0.5)  
+
+hist(as.numeric(unlist(T48_RNA_log2_FPKM)), breaks = 1000, 
+     main = "Histogram of unstimulated CD3 T cell gene expression values",
+     xlab = "log2-transformed RNA count value")
+mtext("CD3 T cells of HD and CLL patients, 48h after CD3 CD28 stimulation", side = 3, line = 0.5)
+mtext("After removal of values < 1 and genes where n < 3", side = 3, line = -0.5)  
+
+# The lines under these create histograms per group (CLL or HD)
 
 # hist(as.numeric(unlist(T48_RNA_log2_FPKM[,c(1:4)])), breaks = 1000)
 # hist(as.numeric(unlist(T48_RNA_log2_FPKM[,c(5:8)])), breaks = 1000)
 
 # T48_RNA_log2_FPKM <- scale_gene_expression_data(T48_RNA_log2_FPKM)
-# 
 # hist(as.numeric(unlist(T48_RNA_log2_FPKM)), breaks = 100)
 # 
 # T0_RNA_log2_FPKM <- scale_gene_expression_data(T0_RNA_log2_FPKM)
-# 
 # hist(as.numeric(unlist(T0_RNA_log2_FPKM[,c(1:4)])), breaks = 1000)
 # 
 # hist(as.numeric(unlist(T0_RNA_log2_FPKM[,c(5:8)])), breaks = 1000)
@@ -204,8 +223,17 @@ T48_RNA_log2_FPKM <- t(scale(t(T48_RNA_log2_FPKM)))
 
 Exploring the data once more in histogram form
 ```{r}
-hist(as.numeric(unlist(T0_RNA_log2_FPKM)), breaks = 1000)
-hist(as.numeric(unlist(T48_RNA_log2_FPKM)), breaks = 1000)
+hist(as.numeric(unlist(T0_RNA_log2_FPKM)), breaks = 1000, 
+     main = "Histogram of unstimulated CD3 T cell gene expression values",
+     xlab = "Transformed RNA count value")
+mtext("CD3 T cells of HD and CLL patients", side = 3, line = 0.5)
+mtext("After removal of values < 1, genes where n < 3 and Z-score normalization", side = 3, line = -0.5) 
+
+hist(as.numeric(unlist(T48_RNA_log2_FPKM)), breaks = 1000, 
+     main = "Histogram of unstimulated CD3 T cell gene expression values",
+     xlab = "Transformed RNA count value")
+mtext("CD3 T cells of HD and CLL patients, 48h after CD3 CD28 stimulation", side = 3, line = 0.5)
+mtext("After removal of values < 1, genes where n < 3 and Z-score normalization", side = 3, line = -0.5)
 
 ```
 
