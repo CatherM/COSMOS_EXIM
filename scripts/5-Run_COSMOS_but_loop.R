@@ -18,7 +18,7 @@ cosmos_inputs <- T48_cosmos_inputs # T0 or T48
 stim_point <- "T48"
 names(cosmos_inputs)
 
-max_depth <- 4
+max_depth <- 3
 # dir.create(file.path("L:/basic/divg/EXIM/ImmunoHematology/Cathy Magnée/Scripts/COSMOS_EXIM", paste("results/Network_files_csvs/d", max_depth, sep = "")))
 seconds_per_step <- 3600/2
 
@@ -61,151 +61,156 @@ my_options$threads <- 19
 
 
 time_df <- data.frame()
-for (patient in names(cosmos_inputs)){
-  # patient <- "CLL2479_T48" # This is now automatic. Sheeeee
-  sig_input <- cosmos_inputs[[patient]]$TF_scores
-  metab_input <- cosmos_inputs[[patient]]$metabolomic 
-  RNA_input <- cosmos_inputs[[patient]]$RNA
-
-  # Filter inputs
-  metab_input <- prepare_metab_inputs(metab_input, c("c","m"))
+for (patient in names(cosmos_inputs[4:8])){
+  tryCatch({
+    sig_input <- cosmos_inputs[[patient]]$TF_scores
+    metab_input <- cosmos_inputs[[patient]]$metabolomic 
+    RNA_input <- cosmos_inputs[[patient]]$RNA
   
-  
-  filter <- 125
-  sig_input <- sig_input[abs(sig_input) > 1.5] 
-  metab_input <- metab_input[abs(metab_input) > 1.25] 
-  
-  metab_input <- cosmosR:::filter_input_nodes_not_in_pkn(metab_input, meta_network)
-  sig_input <- cosmosR:::filter_input_nodes_not_in_pkn(sig_input, meta_network)
-  
-  # Stp 1
-  test_for <- preprocess_COSMOS_signaling_to_metabolism(meta_network = meta_network[,c(1,3,2)],
-                                                        signaling_data = sig_input,
-                                                        metabolic_data = metab_input,
-                                                        diff_expression_data = RNA_input,
-                                                        maximum_network_depth = max_depth,
-                                                        remove_unexpressed_nodes = T,
-                                                        filter_tf_gene_interaction_by_optimization = T,
-                                                        CARNIVAL_options = my_options)
-  my_options$timelimit <- seconds_per_step
-  new_row <- list(
-    patient = patient,
-    step = "step_1",
-    end_time = round(Sys.time()-start.time,2)
-  )
-  time_df <- rbind(time_df, new_row)
-  #Stp 2
-  test_result_for <- run_COSMOS_signaling_to_metabolism(data = test_for,
-                                                        CARNIVAL_options = my_options)
-  new_row <- list(
-    patient = patient,
-    step = "step_2",
-    end_time = round(Sys.time()-start.time,2)
-  )
-  time_df <- rbind(time_df, new_row)
-  
-  formatted_res <- format_COSMOS_res(test_result_for)
-  
-  SIF <- formatted_res[[1]]
-  ATT <- formatted_res[[2]]
-  
-  SIF <- SIF[which(SIF$Weight != 0),]
-  
-  RNA_input_df <- data.frame(Nodes = names(RNA_input), t = RNA_input)
-  ATT <- merge(ATT, RNA_input_df, all.x = T)
-  ATT <- ATT[ATT$AvgAct != 0,]
-  
-  
-  # write_csv(SIF, file = paste("../results/",paste(patient, "_SIF.csv",sep = ""), sep = ""))
-  # write_csv(ATT, file = paste("../results/",paste(patient, "_ATT.csv",sep = ""), sep = ""))
-  
-  #Stp 3
-  my_options$timelimit <- seconds_per_step
-  
-  
-  test_back <- preprocess_COSMOS_metabolism_to_signaling(meta_network = meta_network[,c(1,3,2)],
-                                                         signaling_data = sig_input,
-                                                         metabolic_data = metab_input,
-                                                         diff_expression_data = RNA_input,
-                                                         maximum_network_depth = max_depth,
-                                                         remove_unexpressed_nodes = TRUE,
-                                                         filter_tf_gene_interaction_by_optimization = TRUE,
-                                                         CARNIVAL_options = my_options)
-  new_row <- list(
-    patient = patient,
-    step = "step_3",
-    end_time = round(Sys.time()-start.time,2)
-  )
-  time_df <- rbind(time_df, new_row)
-  #Stp 4
-  my_options$timelimit <- seconds_per_step
-  
-  test_result_back <- run_COSMOS_metabolism_to_signaling(data = test_back,
-                                                         CARNIVAL_options = my_options)
-  new_row <- list(
-    patient = patient,
-    step = "step_4",
-    end_time = round(Sys.time()-start.time,2)
-  )
-  time_df <- rbind(time_df, new_row)
-  formatted_res_back <- format_COSMOS_res(test_result_back)
-  
-  SIF_back <- formatted_res_back[[1]]
-  ATT_back <- formatted_res_back[[2]]
-  
-  SIF_back <- SIF_back[which(SIF_back$Weight != 0),]
-  
-  ATT_back <- merge(ATT_back, RNA_input_df, all.x = T)
-  ATT_back <- ATT_back[ATT_back$AvgAct != 0,]
-  
-  # write_csv(SIF_back, file = paste("../results/",paste(patient, "_SIF_back.csv",sep = ""), sep = ""))
-  # write_csv(ATT_back, file = paste("../results/",paste(patient, "_ATT_back.csv",sep = ""), sep = ""))
-  
-  #Stp 5: Merge all & save
-  
-  SIF_full <- as.data.frame(rbind(SIF,SIF_back))
-  SIF_full <- unique(SIF_full)
-  
-  ATT_full <- as.data.frame(rbind(ATT,ATT_back))
-  ATT_full <- unique(ATT_full)
-  
-  P_nodes <- ATT_full[ATT_full$NodeType == "P","Nodes"]
-  M_nodes <- ATT_full[ATT_full$NodeType == "M","Nodes"]
-  C_nodes <- union(P_nodes,M_nodes)
-  # C_nodes <- C_nodes[which(C_nodes %in% c(SIF$Node1,SIF$Node2) & C_nodes %in% c(SIF_back$Node1,SIF_back$Node2))]
-  
-  ATT_full <- ATT_full[,-6]
-  
-  ATT_full <- ATT_full %>% group_by(Nodes) %>% summarise_each(funs(mean(., na.rm = TRUE)))
-  ATT_full <- as.data.frame(ATT_full)
-  
-  ATT_full$NodeType <- ifelse(ATT_full$Nodes %in% C_nodes,"C",ifelse(ATT_full$Nodes %in% P_nodes,"P",ifelse(ATT_full$Nodes %in% M_nodes,"M","")))
-  
-  # Automatically create path to save results, so it does not get messy in my folders
-  core_path <- "L:/basic/divg/EXIM/ImmunoHematology/Cathy Magnée/Data/CD3_HDvsCLL/CosmosR"
-  
-  result_path <- paste("/Networks/d", max_depth, sep = "") # Add depth folder
-  dir.create(file.path(core_path, result_path), showWarnings = FALSE)
-  result_path <- paste(result_path, paste("/f", filter, sep = ""), sep = "") # Add filter folder
-  dir.create(file.path(core_path, result_path), showWarnings = FALSE)
-  result_path <- paste(result_path, paste("/", stim_point, sep = ""), sep = "") # Add stim/unstim point folder
-  dir.create(file.path(core_path, result_path), showWarnings = FALSE)
-  result_path <- paste(result_path, "/csvs/", sep = "") # Add csv folder
-  dir.create(file.path(core_path, result_path), showWarnings = FALSE)
-  
-  result_path <- paste(core_path, result_path, sep = "")
-  # result_path <- paste("../results/Network_files_csvs/d", paste(max_depth, paste("/f", paste (filter, paste("/"), paste(stim_point, "/", sep = ""), sep = ""), sep = ""), sep = ""), sep = "")
-  write_csv(SIF_full, file = paste(result_path, paste(patient, "_SIF_full.csv", sep = ""), sep = ""))
-  write_csv(ATT_full, file = paste(result_path, paste(patient, "_ATT_full.csv", sep = ""), sep = ""))
-  
-  # How long did this take?
-  new_row <- list(
-    patient = patient,
-    step = 'final',
-    end_time = round(Sys.time()-start.time,2)
-  )
-  time_df <- rbind(time_df, new_row)
-  
+    # Filter inputs
+    metab_input <- prepare_metab_inputs(metab_input, c("c","m"))
+    
+    
+    filter <- 10
+    sig_input <- sig_input[abs(sig_input) > 1.0] 
+    metab_input <- metab_input[abs(metab_input) > 1.0] 
+    
+    metab_input <- cosmosR:::filter_input_nodes_not_in_pkn(metab_input, meta_network)
+    sig_input <- cosmosR:::filter_input_nodes_not_in_pkn(sig_input, meta_network)
+    
+    # Stp 1
+    test_for <- preprocess_COSMOS_signaling_to_metabolism(meta_network = meta_network[,c(1,3,2)],
+                                                          signaling_data = sig_input,
+                                                          metabolic_data = metab_input,
+                                                          diff_expression_data = RNA_input,
+                                                          maximum_network_depth = max_depth,
+                                                          remove_unexpressed_nodes = T,
+                                                          filter_tf_gene_interaction_by_optimization = T,
+                                                          CARNIVAL_options = my_options)
+    my_options$timelimit <- seconds_per_step
+    new_row <- list(
+      patient = patient,
+      step = "step_1",
+      end_time = round(Sys.time()-start.time,2)
+    )
+    time_df <- rbind(time_df, new_row)
+    #Stp 2
+    test_result_for <- run_COSMOS_signaling_to_metabolism(data = test_for,
+                                                          CARNIVAL_options = my_options)
+    new_row <- list(
+      patient = patient,
+      step = "step_2",
+      end_time = round(Sys.time()-start.time,2)
+    )
+    time_df <- rbind(time_df, new_row)
+    
+    formatted_res <- format_COSMOS_res(test_result_for)
+    
+    SIF <- formatted_res[[1]]
+    ATT <- formatted_res[[2]]
+    
+    SIF <- SIF[which(SIF$Weight != 0),]
+    
+    RNA_input_df <- data.frame(Nodes = names(RNA_input), t = RNA_input)
+    ATT <- merge(ATT, RNA_input_df, all.x = T)
+    ATT <- ATT[ATT$AvgAct != 0,]
+    
+    
+    # write_csv(SIF, file = paste("../results/",paste(patient, "_SIF.csv",sep = ""), sep = ""))
+    # write_csv(ATT, file = paste("../results/",paste(patient, "_ATT.csv",sep = ""), sep = ""))
+    
+    #Stp 3
+    my_options$timelimit <- seconds_per_step
+    
+    
+    test_back <- preprocess_COSMOS_metabolism_to_signaling(meta_network = meta_network[,c(1,3,2)],
+                                                           signaling_data = sig_input,
+                                                           metabolic_data = metab_input,
+                                                           diff_expression_data = RNA_input,
+                                                           maximum_network_depth = max_depth,
+                                                           remove_unexpressed_nodes = TRUE,
+                                                           filter_tf_gene_interaction_by_optimization = TRUE,
+                                                           CARNIVAL_options = my_options)
+    new_row <- list(
+      patient = patient,
+      step = "step_3",
+      end_time = round(Sys.time()-start.time,2)
+    )
+    time_df <- rbind(time_df, new_row)
+    #Stp 4
+    my_options$timelimit <- seconds_per_step
+    
+    test_result_back <- run_COSMOS_metabolism_to_signaling(data = test_back,
+                                                           CARNIVAL_options = my_options)
+    new_row <- list(
+      patient = patient,
+      step = "step_4",
+      end_time = round(Sys.time()-start.time,2)
+    )
+    time_df <- rbind(time_df, new_row)
+    formatted_res_back <- format_COSMOS_res(test_result_back)
+    
+    SIF_back <- formatted_res_back[[1]]
+    ATT_back <- formatted_res_back[[2]]
+    
+    SIF_back <- SIF_back[which(SIF_back$Weight != 0),]
+    
+    ATT_back <- merge(ATT_back, RNA_input_df, all.x = T)
+    ATT_back <- ATT_back[ATT_back$AvgAct != 0,]
+    
+    # write_csv(SIF_back, file = paste("../results/",paste(patient, "_SIF_back.csv",sep = ""), sep = ""))
+    # write_csv(ATT_back, file = paste("../results/",paste(patient, "_ATT_back.csv",sep = ""), sep = ""))
+    
+    #Stp 5: Merge all & save
+    
+    SIF_full <- as.data.frame(rbind(SIF,SIF_back))
+    SIF_full <- unique(SIF_full)
+    
+    ATT_full <- as.data.frame(rbind(ATT,ATT_back))
+    ATT_full <- unique(ATT_full)
+    
+    P_nodes <- ATT_full[ATT_full$NodeType == "P","Nodes"]
+    M_nodes <- ATT_full[ATT_full$NodeType == "M","Nodes"]
+    C_nodes <- union(P_nodes,M_nodes)
+    # C_nodes <- C_nodes[which(C_nodes %in% c(SIF$Node1,SIF$Node2) & C_nodes %in% c(SIF_back$Node1,SIF_back$Node2))]
+    
+    ATT_full <- ATT_full[,-6]
+    
+    ATT_full <- ATT_full %>% group_by(Nodes) %>% summarise_each(funs(mean(., na.rm = TRUE)))
+    ATT_full <- as.data.frame(ATT_full)
+    
+    ATT_full$NodeType <- ifelse(ATT_full$Nodes %in% C_nodes,"C",ifelse(ATT_full$Nodes %in% P_nodes,"P",ifelse(ATT_full$Nodes %in% M_nodes,"M","")))
+    
+    # Automatically create path to save results, so it does not get messy in my folders
+    core_path <- "L:/basic/divg/EXIM/ImmunoHematology/Cathy Magnée/Data/CD3_HDvsCLL/CosmosR"
+    
+    result_path <- paste("/Networks/d", max_depth, sep = "") # Add depth folder
+    dir.create(file.path(core_path, result_path), showWarnings = FALSE)
+    result_path <- paste(result_path, paste("/f", filter, sep = ""), sep = "") # Add filter folder
+    dir.create(file.path(core_path, result_path), showWarnings = FALSE)
+    result_path <- paste(result_path, paste("/", stim_point, sep = ""), sep = "") # Add stim/unstim point folder
+    dir.create(file.path(core_path, result_path), showWarnings = FALSE)
+    result_path <- paste(result_path, "/csvs/", sep = "") # Add csv folder
+    dir.create(file.path(core_path, result_path), showWarnings = FALSE)
+    
+    result_path <- paste(core_path, result_path, sep = "")
+    # result_path <- paste("../results/Network_files_csvs/d", paste(max_depth, paste("/f", paste (filter, paste("/"), paste(stim_point, "/", sep = ""), sep = ""), sep = ""), sep = ""), sep = "")
+    write_csv(SIF_full, file = paste(result_path, paste(patient, "_SIF_full.csv", sep = ""), sep = ""))
+    write_csv(ATT_full, file = paste(result_path, paste(patient, "_ATT_full.csv", sep = ""), sep = ""))
+    
+    # How long did this take?
+    new_row <- list(
+      patient = patient,
+      step = 'final',
+      end_time = round(Sys.time()-start.time,2))
+    time_df <- rbind(time_df, new_row)
+  }, error = function(e) {
+    message(paste("Error in processing patient:", patient, "-", e$message))
+    skip_to_next <<- TRUE  # Set flag to skip the rest of the iteration
+  })
+  if (skip_to_next){
+    next
+  }
 }
 end.time <- Sys.time()
 time.taken <- round(end.time - start.time, 2)

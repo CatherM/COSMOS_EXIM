@@ -24,22 +24,10 @@ library(stringr)
 
 Loop:
 ```{r, include=FALSE}
-T48_input_path <- "../ourdata/cosmos/T48_cosmos_inputs.RData" # Laptop only
-
-# T48_input_path <- "L:\\basic\\divg\\EXIM\\ImmunoHematology\\Cathy Magnée\\Data\\CD3_HDvsCLL\\CosmosR\\T48_cosmos_inputs.RData"
-# T0_input_path <- "L:\\basic\\divg\\EXIM\\ImmunoHematology\\Cathy Magnée\\Data\\CD3_HDvsCLL\\CosmosR\\T0_cosmos_inputs.RData"
-
-# load(T0_input_path)
-load(T48_input_path)
-T48_cosmos_inputs <- day2_cosmos_inputs # Laptop only
-rm(day2_cosmos_inputs)
-
-# T48_cosmos_inputs <- day2_cosmos_inputs #Laptop only
 
 # edit these based on variables just to create network
-cosmos_inputs <- T48_cosmos_inputs 
-max_depth <- 2
-stim_point <- "T0"
+max_depth <- 4
+stim_point <- "T48"
 filter <- "125" 
 
 # Path to where the data should be at AMC pc:
@@ -53,15 +41,14 @@ result_path <- paste(result_path, "/csvs/", sep = "") # Add csv folder
 data_path <- paste(core_path, result_path, sep = "")
 
 # path where data should be at personal laptop:
-core_path <- "C:/Users/Cathy.LAPTOP-SDFOSKVI/Documents/School_files/SysBio_RP/COSMOS_EXIM/results"
-result_path <- paste("/d", max_depth, sep = "") # Add depth folder
-data_path <- paste(core_path, result_path, sep = "")
+# core_path <- "C:/Users/Cathy.LAPTOP-SDFOSKVI/Documents/School_files/SysBio_RP/COSMOS_EXIM/results"
+# result_path <- paste("/d", max_depth, sep = "") # Add depth folder
+# data_path <- paste(core_path, result_path, sep = "")
 
 # Path to where result will be saved to:
 
 # SIF_path <- paste("../results/d", paste(max_depth, paste(patient, "_SIF_full.csv", sep = ""), sep = ""), sep = "")
 # ATT_path <- paste("../results/d", paste(max_depth, paste(patient, "_ATT_full.csv",sep = ""), sep = ""), sep = "")
-
 
 # SIF_path <- paste("../results/Networks/d7_filter11_h4_T48/d", paste(max_depth, paste(patient, "_SIF_full.csv", sep = ""), sep = ""), sep = "")
 # ATT_path <- paste("../results/Networks/d7_filter11_h4_T48/d", paste(max_depth, paste(patient, "_ATT_full.csv",sep = ""), sep = ""), sep = "")
@@ -72,13 +59,18 @@ data_path <- paste(core_path, result_path, sep = "")
 
 
 # Edit below to what you want to preprocess
-for (patient in names(cosmos_inputs)){
+all_files <- list.files(path = data_path, pattern = "*_SIF_full.csv", full.names = TRUE)
+for (files in all_files){
+  patient <- str_extract(files, "[^/]+(?=_SIF)")
+  
   # insert paths
   SIF_path <- paste(data_path, paste(patient, "_SIF_full.csv", sep = ""), sep = "")
   SIF <- read_csv(SIF_path)
+  SIF <- unique(SIF)
 
   ATT_path <- paste(data_path, paste(patient, "_ATT_full.csv",sep = ""), sep = "")
   ATT <- read_csv(ATT_path)
+  ATT <- unique(ATT)
   
   MolType_df <- data.frame()
   for(nodes in ATT$Nodes){
@@ -134,16 +126,13 @@ for (patient in names(cosmos_inputs)){
   ATT[temp] <- 1
  
   # Saving processed csvs
-  result_path <- paste("/processed_results/d", max_depth, sep = "") # Laptop only
+  # result_path <- paste("/processed_results/d", max_depth, sep = "") # Laptop only
   data_path <- paste(core_path, result_path, sep = "") # Laptop only
   write_csv(SIF, file = paste(data_path, paste(patient, "_SIF_processed.csv", sep = ""), sep = ""))
   write_csv(ATT, file = paste(data_path, paste(patient, "_ATT_processed.csv", sep = ""), sep = ""))
   
 }
 
-
-# networks.path <- "../results/"
-# all_files <- list.files(path = networks.path, pattern = "*._full.csv", full.names = TRUE)
 
 
 ```

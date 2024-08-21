@@ -7,8 +7,9 @@
 # Library start:
 library(RCy3)
 library(readr)
-library(colorRamps)
-library(STRINGdb)
+library(stringr)
+# library(colorRamps)
+# library(STRINGdb)
 
 # OPEN CYTOSCAPE BEFORE CONTINUING
 # Check Connection to Cytoscape:
@@ -19,17 +20,18 @@ style.name = "empty"
 
 # Import dataset so you can loop through the patient names:
 # Import datasets:
-T48_input_path <- "ourdata/cosmos/T48_cosmos_inputs.RData" # Laptop only
-load(T48_input_path)
-T48_cosmos_inputs <- day2_cosmos_inputs # Laptop only
-rm(day2_cosmos_inputs)
-cosmos_inputs <- T48_cosmos_inputs
+
+# T48_input_path <- "ourdata/cosmos/T48_cosmos_inputs.RData" # Laptop only
+# load(T48_input_path)
+# T48_cosmos_inputs <- day2_cosmos_inputs # Laptop only
+# rm(day2_cosmos_inputs)
+# cosmos_inputs <- T48_cosmos_inputs
 
 
 # COSMOS variables (What network do you want to see / make?). Folder path
-max_depth <- 2
+max_depth <- 4
 filter <- 125
-stim_point <- "T0"
+stim_point <- "T48"
 
 # AMC PATH BLOCK
 core_path <- "L:/basic/divg/EXIM/ImmunoHematology/Cathy Magnée/Data/CD3_HDvsCLL/CosmosR"
@@ -41,17 +43,19 @@ data_path <- paste(core_path, result_path, sep = "")
 
 # Laptop path block:
 
-core_path <- "C:/Users/Cathy.LAPTOP-SDFOSKVI/Documents/School_files/SysBio_RP/COSMOS_EXIM/results/processed_results"
-result_path <- paste("/d", max_depth, sep = "") # Add depth folder
-data_path <- paste(core_path, result_path, sep = "")
+# core_path <- "C:/Users/Cathy.LAPTOP-SDFOSKVI/Documents/School_files/SysBio_RP/COSMOS_EXIM/results/processed_results"
+# result_path <- paste("/d", max_depth, sep = "") # Add depth folder
+# data_path <- paste(core_path, result_path, sep = "")
 
 
 # Create Merged_Network dfs
 Merged_Network_CLL <- data.frame()
 Merged_Network_HD <- data.frame()
-patient <- "CLL2648_T48"
-for (patient in names(cosmos_inputs)){
-  
+# patient <- "CLL2648_T48"
+
+all_files <- list.files(path = data_path, pattern = "*_SIF_processed.csv", full.names = TRUE)
+for (files in all_files){
+  patient <- str_extract(files, "[^/]+(?=_SIF)")
   # Import processed SIF and ATT files for patient
   SIF_path <- paste(data_path, paste(patient, "_SIF_processed.csv", sep = ""), sep = "")
   SIF <- read_csv(SIF_path)
@@ -61,105 +65,125 @@ for (patient in names(cosmos_inputs)){
   ATT <- unique(ATT)
   
   
-  if(substr(patient, 0, 3)== "CLL"){
+  if(substr(patient, 0, 3)== "CLL"){ 
+    # Only for CLL patients
     for (Noderow in unique(ATT$Nodes)){
-      if (Noderow in Merged_Network_CLL$Nodes){
-        continue
+      # For every node in the ATT 
+      print(Noderow)
+      if (Noderow %in% Merged_Network_CLL$Nodes){
+        Merged_Network_CLL$Measured[Merged_Network_CLL$Nodes == Noderow] <- 
+          Merged_Network_CLL$Measured[Merged_Network_CLL$Nodes == Noderow] + 1
+        Merged_Network_CLL$Activity[Merged_Network_CLL$Nodes == Noderow] <- 
+          Merged_Network_CLL$Activity[Merged_Network_CLL$Nodes == Noderow] + ATT$Activity[ATT$Nodes == Noderow]
       } else {
         new_row <- list(
-          Nodes = Noderow
-          Activity = ATT$Activity[Noderow]
+          Nodes = Noderow,
+          Measured = 1,
+          Activity = ATT$Activity[ATT$Nodes == Noderow]
         )
-        Merged_Network_CLL <- rbind(Merged_Network_CLL)
+        print(new_row)
+        Merged_Network_CLL <- rbind(Merged_Network_CLL, new_row)
       }
     }
-    
-  } else { 
-      "HD"
+  
+  } else {
+    # Only for HD patients
+    if (Noderow %in% Merged_Network_HD$Nodes){
+      Merged_Network_HD$Measured[Merged_Network_HD$Nodes == Noderow] <- 
+        Merged_Network_HD$Measured[Merged_Network_HD$Nodes == Noderow] + 1
+    } else {
+      new_row <- list(
+        Nodes = Noderow,
+        Measured = 1,
+        Activity = ATT$Activity[ATT$Nodes == Noderow]
+      )
+      Merged_Network_HD <- rbind(Merged_Network_HD, new_row)
+    }
+  }
     }
   
   # Translate this to Node Table and Edges Table for in Cytoscape
-  nodes <- data.frame(id = ATT$Nodes,
-                      Activity = ATT$`Activity`,
-                      measured = ATT$measured,
-                      moleculeType = ATT$MoleculeType,
-                      stringsAsFactors = F)
-  edges <- data.frame(source = SIF$Node1,
-                      target = SIF$Node2,
-                      interaction = as.character(SIF$Sign),
-                      weight = SIF$Weight,
-                      stringsAsFactors = FALSE)
-  
-  # Two things: 1: Adding moleculeType column to nodes table; 2: putting shapes to these 
-  # Step 1 should be done earlier, maybe in 6 - Preprocess_network.Rmd.
-  #StringDB Tryout
-  ATT_string_interaction_cmd <- paste('string protein query taxonID=9606 cutoff=0.9 query=', paste(nodes$id, collapse=","),'"',sep="")
-  commandsGET(ATT_string_interaction_cmd )
-  string_nodes <- getTableColumns(table = "node", columns = c("display name", "target::family"), network = "STRING network")
-  colnames(string_nodes) <- c("id", "moleculeType")
-  string_nodes <- merge(nodes, string_nodes, by = "id", all.x = T)
-  nodes$moleculeType <- ifelse(is.na(string_nodes$moleculeType.x), 
-                                     string_nodes$moleculeType.y, 
-                                     string_nodes$moleculeType.x)
-  nodes$moleculeType[is.na(nodes$moleculeType)] <- "Other"
-  
-  
-  closeSession(save.before.closing = F)
-  
-  createNetworkFromDataFrames(nodes, edges, title = patient, collection = if(substr(patient, 0, 3)== "CLL"){"CLL"} else { "HD"})
-  # You should see a network rn frfr
-  
-  
-  
-  # Setting style for network OR creating it first, then setting the style. If else so we do not remake this style over and over.
-  if (style.name == "COSMOS_Style"){
-    setVisualStyle(style.name)
-  } else {
-    style.name = "COSMOS_Style"
-    defaults <- list(NODE_SHAPE="ROUND_RECTANGLE",
-                     NODE_SIZE=50,
-                     EDGE_TRANSPARENCY=255,
-                     NODE_LABEL_POSITION="S,N,c,0.00,0.00")
-    nodeLabels <- mapVisualProperty('node label','id','p')
-    nodeFills <- mapVisualProperty('node fill color',
-                                   'Activity',
-                                   'c',
-                                   c(-1,1),
-                                   c('#CC0000', '#009900'))
-    nodeBorderWidth <- mapVisualProperty('node border width',
-                                         'measured',
-                                         'd',
-                                         c(0.0, 1.0),
-                                         c(0, 4))
-    arrowShapes <- mapVisualProperty('Edge Target Arrow Shape', # What style property we are mapping
-                                     'interaction', # What table column we are using for it
-                                     'd', # Type of mapping (discrete)
-                                     c("-1", "1"),c("T","Arrow"))
-    edgeWidth <- mapVisualProperty('edge width','weight','p')
-    
-    
-    createVisualStyle(style.name, defaults, list(nodeLabels,nodeFills,nodeBorderWidth,arrowShapes,edgeWidth))
-    setVisualStyle(style.name)
-  }
-  
-  
-  # setLayoutProperties("degree-circle")
-  # 2: Connecting shapes to moleculeType
-  
-  column <- 'moleculeType'
-  values <- c ('Metabolite', 'Kinase',  
-               'Transcription Factor', 'Other',
-               'Enzyme', 'Epigenetic', 
-               'GCPR', 'TF-Epigenetic', 
-               'Nuclear Receptor', 'Transporter')
-  shapes <- c ('ELLIPSE', 'TRIANGLE', 
-               'DIAMOND', 'PARALLELOGRAM', 
-               'RECTANGLE', 'VEE', 
-               'HEXAGON', 'DIAMOND',
-               'OCTAGON', 'ROUND RECTANGLE')
-  setNodeShapeMapping (column, values, shapes, style.name = style.name)
-  
-  getLayoutNames()
-  getLayoutPropertyNames() # look up what these mean and fill in list below.
-  setLayoutProperties("degree-circle", properties.list = list())
+  # nodes <- data.frame(id = ATT$Nodes,
+  #                     Activity = ATT$`Activity`,
+  #                     measured = ATT$measured,
+  #                     moleculeType = ATT$MoleculeType,
+  #                     stringsAsFactors = F)
+  # edges <- data.frame(source = SIF$Node1,
+  #                     target = SIF$Node2,
+  #                     interaction = as.character(SIF$Sign),
+  #                     weight = SIF$Weight,
+  #                     stringsAsFactors = FALSE)
+  # 
+  # # Two things: 1: Adding moleculeType column to nodes table; 2: putting shapes to these 
+  # # Step 1 should be done earlier, maybe in 6 - Preprocess_network.Rmd.
+  # #StringDB Tryout
+  # ATT_string_interaction_cmd <- paste('string protein query taxonID=9606 cutoff=0.9 query=', paste(nodes$id, collapse=","),'"',sep="")
+  # commandsGET(ATT_string_interaction_cmd )
+  # string_nodes <- getTableColumns(table = "node", columns = c("display name", "target::family"), network = "STRING network")
+  # colnames(string_nodes) <- c("id", "moleculeType")
+  # string_nodes <- merge(nodes, string_nodes, by = "id", all.x = T)
+  # nodes$moleculeType <- ifelse(is.na(string_nodes$moleculeType.x), 
+  #                                    string_nodes$moleculeType.y, 
+  #                                    string_nodes$moleculeType.x)
+  # nodes$moleculeType[is.na(nodes$moleculeType)] <- "Other"
+  # 
+  # 
+  # closeSession(save.before.closing = F)
+  # 
+  # createNetworkFromDataFrames(nodes, edges, title = patient, collection = if(substr(patient, 0, 3)== "CLL"){"CLL"} else { "HD"})
+  # # You should see a network rn frfr
+  # 
+  # 
+  # 
+  # # Setting style for network OR creating it first, then setting the style. If else so we do not remake this style over and over.
+  # if (style.name == "COSMOS_Style"){
+  #   setVisualStyle(style.name)
+  # } else {
+  #   style.name = "COSMOS_Style"
+  #   defaults <- list(NODE_SHAPE="ROUND_RECTANGLE",
+  #                    NODE_SIZE=50,
+  #                    EDGE_TRANSPARENCY=255,
+  #                    NODE_LABEL_POSITION="S,N,c,0.00,0.00")
+  #   nodeLabels <- mapVisualProperty('node label','id','p')
+  #   nodeFills <- mapVisualProperty('node fill color',
+  #                                  'Activity',
+  #                                  'c',
+  #                                  c(-1,1),
+  #                                  c('#CC0000', '#009900'))
+  #   nodeBorderWidth <- mapVisualProperty('node border width',
+  #                                        'measured',
+  #                                        'd',
+  #                                        c(0.0, 1.0),
+  #                                        c(0, 4))
+  #   arrowShapes <- mapVisualProperty('Edge Target Arrow Shape', # What style property we are mapping
+  #                                    'interaction', # What table column we are using for it
+  #                                    'd', # Type of mapping (discrete)
+  #                                    c("-1", "1"),c("T","Arrow"))
+  #   edgeWidth <- mapVisualProperty('edge width','weight','p')
+  #   
+  #   
+  #   createVisualStyle(style.name, defaults, list(nodeLabels,nodeFills,nodeBorderWidth,arrowShapes,edgeWidth))
+  #   setVisualStyle(style.name)
+  # }
+  # 
+  # 
+  # # setLayoutProperties("degree-circle")
+  # # 2: Connecting shapes to moleculeType
+  # 
+  # column <- 'moleculeType'
+  # values <- c ('Metabolite', 'Kinase',  
+  #              'Transcription Factor', 'Other',
+  #              'Enzyme', 'Epigenetic', 
+  #              'GCPR', 'TF-Epigenetic', 
+  #              'Nuclear Receptor', 'Transporter')
+  # shapes <- c ('ELLIPSE', 'TRIANGLE', 
+  #              'DIAMOND', 'PARALLELOGRAM', 
+  #              'RECTANGLE', 'VEE', 
+  #              'HEXAGON', 'DIAMOND',
+  #              'OCTAGON', 'ROUND RECTANGLE')
+  # setNodeShapeMapping (column, values, shapes, style.name = style.name)
+  # 
+  # getLayoutNames()
+  # getLayoutPropertyNames() # look up what these mean and fill in list below.
+  # setLayoutProperties("degree-circle", properties.list = list())
 }
