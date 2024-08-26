@@ -20,7 +20,7 @@ names(cosmos_inputs)
 
 max_depth <- 3
 # dir.create(file.path("L:/basic/divg/EXIM/ImmunoHematology/Cathy Magnée/Scripts/COSMOS_EXIM", paste("results/Network_files_csvs/d", max_depth, sep = "")))
-seconds_per_step <- 3600/2
+seconds_per_step <- 3600*2
 
 #In order to adapt options to users specification we can load them into a variable 
 #that will then be passed to preprocess_COSMOS_signaling_to_metabolism CARNIVAL_options parameter
@@ -61,7 +61,8 @@ my_options$threads <- 19
 
 
 time_df <- data.frame()
-for (patient in names(cosmos_inputs[4:8])){
+for (patient in names(cosmos_inputs)){
+  skip_to_next <<- F
   tryCatch({
     sig_input <- cosmos_inputs[[patient]]$TF_scores
     metab_input <- cosmos_inputs[[patient]]$metabolomic 
@@ -71,9 +72,9 @@ for (patient in names(cosmos_inputs[4:8])){
     metab_input <- prepare_metab_inputs(metab_input, c("c","m"))
     
     
-    filter <- 10
-    sig_input <- sig_input[abs(sig_input) > 1.0] 
-    metab_input <- metab_input[abs(metab_input) > 1.0] 
+    filter <- "s15m05"
+    sig_input <- sig_input[abs(sig_input) > 1.5] 
+    metab_input <- metab_input[abs(metab_input) > 0.5] 
     
     metab_input <- cosmosR:::filter_input_nodes_not_in_pkn(metab_input, meta_network)
     sig_input <- cosmosR:::filter_input_nodes_not_in_pkn(sig_input, meta_network)

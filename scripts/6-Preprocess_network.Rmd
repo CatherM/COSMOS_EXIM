@@ -26,9 +26,9 @@ Loop:
 ```{r, include=FALSE}
 
 # edit these based on variables just to create network
-max_depth <- 4
+max_depth <- 3
 stim_point <- "T48"
-filter <- "125" 
+filter <- "s15m05" 
 
 # Path to where the data should be at AMC pc:
 core_path <- "L:/basic/divg/EXIM/ImmunoHematology/Cathy Magnée/Data/CD3_HDvsCLL/CosmosR"
@@ -88,7 +88,12 @@ for (files in all_files){
   }
   ATT <- merge(ATT, MolType_df, by.x = "Nodes", by.y = "Node", all.x = T)
   
-  # Remove __Metab and __Enzyme
+  # Sub Enzyme0000__ (random numbers) to Enzyme_
+  SIF$Node1 <- sub("Enzyme[0-9]+__", "Enzyme_", SIF$Node1)
+  SIF$Node2 <- sub("Enzyme[0-9]+__", "Enzyme_", SIF$Node2)
+  ATT$Nodes  <- sub("Enzyme[0-9]+__", "Enzyme_", ATT$Nodes)
+  
+  # Remove Metab__ 
   SIF$Node1 <- sub(".*__", "", SIF$Node1)
   SIF$Node2 <- sub(".*__", "", SIF$Node2)
   ATT$Nodes<- sub(".*__", "", ATT$Nodes)
