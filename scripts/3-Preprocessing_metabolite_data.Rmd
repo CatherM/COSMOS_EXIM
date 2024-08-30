@@ -64,6 +64,8 @@ Loading data and removing path variables:
 # Metabolite names as rownames
 # T0_metabs_raw <- as.data.frame(read_csv(T0_path))
 # T48_metabs_raw <- as.data.frame(read_csv(T48_path))
+# T0_metabs_hmdb <- T0_metabs_raw
+# T48_metabs_hmdb <- T48_metabs_raw
 
 # HMDB IDs as rownames
 T0_metabs_hmdb <- as.data.frame(read_csv(T0_path, show_col_types = FALSE))
@@ -304,7 +306,7 @@ VSN normalization is used to adjust values to be able to compare across samples.
 ### VSN normalization
 First for T0
 ```{r}
-T0_metabs_hmdb <- T0_metabs_hmdb[,-4]
+T0_metabs_hmdb <- T0_metabs_hmdb[, !(colnames(T0_metabs_hmdb) %in% "CLL2474_T0")]
 fit <- vsnMatrix(as.matrix(T0_metabs_hmdb))
 meanSdPlot(fit)
 T0_metabs_hmdb <- as.data.frame(vsn::predict(fit,as.matrix(T0_metabs_hmdb)))
@@ -383,7 +385,7 @@ Laptop
 In the chunks below, the data distribution is visualized again, per sample, via histograms: :
 ```{r}
 metab_df <- T0_metabs_scaled
-par(mfrow = c(3, 3))
+par(mfrow = c(2, 5))
 
 # metab_df <- T48_metabs_scaled
 # par(mfrow = c(2, 4))

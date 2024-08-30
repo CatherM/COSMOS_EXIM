@@ -15,7 +15,6 @@ meta_network <- meta_network_cleanup(meta_network)
 load(T0_input_path)
 load(T48_input_path)
 
-cosmos_inputs <- T0_cosmos_inputs # T0 or T48
 
 ################################## Parameters ################################## 
 
@@ -53,8 +52,6 @@ my_options$mipGAP <- 0.05
 # amc computer
 my_options$threads <- 19
 
-# ## Chunk to check how much data is available per sample
-cosmos_inputs <- T48_cosmos_inputs # T0 or T48
 
 # Initialize an empty dataframe to store the results
 filter_df <- data.frame(patient = character(),
@@ -64,6 +61,9 @@ filter_df <- data.frame(patient = character(),
                         f_metab = numeric(),
                         stringsAsFactors = FALSE)
 max_depth <- 3
+
+cosmos_inputs <- T0_cosmos_inputs # T0 or T48
+
 # Check for highest filter_s possible
 for (patient in names(cosmos_inputs)) {
   filter_s <- 1.9  # Start filter_s 

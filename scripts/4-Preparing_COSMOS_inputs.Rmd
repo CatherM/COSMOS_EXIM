@@ -95,13 +95,15 @@ T0_metabolomic <- as.data.frame(read_csv(path_T0_metabolomic_data, show_col_type
 names(T0_metabolomic)[names(T0_metabolomic) == "...1"] <- "metabolite"
 
 T0_transcriptomic <- as.data.frame(read_csv(path_T0_transcriptomic_data, show_col_types = FALSE))
-rownames(T0_transcriptomic) <- T0_transcriptomic$...1
+names(T0_transcriptomic)[names(T0_transcriptomic) == "...1"] <- "genes"
+rownames(T0_transcriptomic) <- T0_transcriptomic$genes
 
 T48_metabolomic <- as.data.frame(read_csv(path_T48_metabolomic_data, show_col_types = FALSE))
 names(T48_metabolomic)[names(T48_metabolomic) == "...1"] <- "metabolite"
 
 T48_transcriptomic <-  as.data.frame(read_csv(path_T48_transcriptomic_data, show_col_types = FALSE))
-rownames(T48_transcriptomic) <- T48_transcriptomic$...1
+names(T48_transcriptomic)[names(T48_transcriptomic) == "...1"] <- "genes"
+rownames(T48_transcriptomic) <- T48_transcriptomic$genes
 
 # CollecTRI <- decoupleR::get_collectri(organism='human', split_complexes=FALSE)
 
@@ -119,7 +121,7 @@ We will test this by intersecting the column names of both dataframes and using 
 T0:
 ```{r}
 # intersect so only HD and CLL patients available in both datasets are used
-samples <- intersect(names(T0_metabolomic),names(T0_transcriptomic)) 
+samples <- intersect(names(T0_metabolomic), names(T0_transcriptomic)) 
 
 T0_metabolomic <- T0_metabolomic[,c("metabolite",samples)]
 T0_transcriptomic <- T0_transcriptomic[,samples]
@@ -128,7 +130,7 @@ T0_transcriptomic <- T0_transcriptomic[,samples]
 T48:
 ```{r}
 # intersect so only HD and CLL patients available in both datasets are used
-samples <- intersect(names(T48_metabolomic),names(T48_transcriptomic))
+samples <- intersect(names(T48_metabolomic), names(T48_transcriptomic))
 
 T48_metabolomic <- T48_metabolomic[,c("metabolite",samples)]
 T48_transcriptomic <- T48_transcriptomic[,samples]
@@ -172,23 +174,23 @@ ci_regulons <- ci[,c(3,4,6)] # only need these columns from overview. These are 
 colnames(ci_regulons) <- c("source", "target", "mor")
 ci_regulons <- unique(ci_regulons) # remove pure dupes
 
-# Some of the regulons are duplicated with different mor. 
+# Some of the regulons are duplicated with different mor.
 # This means the same source/target combination has both 0 and 1 options
-# Let's change this. 
+# Let's change this.
 temp <- ci[duplicated(ci[, 3:4]) | duplicated(ci[, 3:4], fromLast = TRUE), ] # all duplicates, also with the same mor values
 duplicates <- anti_join(temp, ci[duplicated(ci[, c(3,4,6)]) | duplicated(ci[, c(3,4,6)], fromLast = TRUE), ]) # only different mor values
 duplicates <- duplicates[,c(3,4,6)]
 colnames(duplicates) <- c("source", "target", "mor")
 duplicates <- unique(duplicates)
 
-# For loop that checks the value of the duplicates in ci_regulons what their values are in collectri_regulons then changes accordingly 
+# For loop that checks the value of the duplicates in ci_regulons what their values are in collectri_regulons then changes accordingly
 for(i in 1:nrow(duplicates)){
   source <- duplicates$source[i]
   target <- duplicates$target[i]
-  
-  collectri_row <- collectri_regulons %>% 
+
+  collectri_row <- collectri_regulons %>%
     filter(source == !!source & target == !!target)
-  
+
   if (nrow(collectri_row) > 0){ # if it is in collectri
     # check mor value
     if (collectri_row$mor == -1){
@@ -204,7 +206,7 @@ for(i in 1:nrow(duplicates)){
 ci_regulons <- unique(ci_regulons)
 
 
-# Change inhibition relation to -1 
+# Change inhibition relation to -1
 ci_regulons$mor[ci_regulons$mor == 0] <- -1
 
 ```
@@ -212,217 +214,10 @@ ci_regulons$mor[ci_regulons$mor == 0] <- -1
 Estimating TF activities.
 There are multiple methods available to estimate TF activities. In the original pipeline (Factor cosmos no mofa), the run_wmean function is used. The official source of DecoupleR [1] describes the following three as most consistently better-performing: consensus, multivariate linear model and ULM. 
 
-First, three methods are explored in the following three chunks. Then, the main method, which can be adjusted, is separately applied to the T0 and T48 gene expression datasets to estimate TF activity.
-
-### Method exploration
-For now, methods wmean, Ulm, mlm and consensus are explored.
-Each is tested using the T0 gene expression dataset. This can be easily adjusted to be any other (preprocessed) dataset. 
-
-Wmean
-```{r}
-# RNA_scaled <- T0_transcriptomic
-# 
-# T0_TF_activities <- apply(RNA_scaled,2,function(x){
-#                         x <- as.data.frame(x[which(!is.na(x))])
-#                         TFs <- run_wmean(as.matrix(x),
-#                                          network = unique(ci_regulons),
-#                                          times = 1000,
-#                                          minsize = 20)
-#                         TFs <- as.data.frame(TFs)
-#                         TFs <- TFs[which(TFs$statistic == "norm_wmean"),c(2,4)]
-#                         as_input <- TFs[,2]
-#                         names(as_input) <- TFs[,1]
-#                         return(as_input)
-#                         })
-```
-
-ULM
-```{r}
-# RNA_scaled <- T0_transcriptomic
-# 
-# T0_TF_activities <- apply(RNA_scaled,2,function(x){
-#                         x <- as.data.frame(x[which(!is.na(x))]) # no NAs allowed
-#                         TFs <- run_ulm(as.matrix(x), # actual running of TF activity estimation function
-#                                          network = unique(ci_regulons),
-#                                          # times = 1000,
-#                                          minsize = 20)
-#                         TFs <- as.data.frame(TFs) # Reformatting into cosmos input format
-#                         print(head(TFs))
-#                         TFs <- TFs[which(TFs$statistic == "ulm"),c(2,4)]
-#                         as_input <- TFs[,2]
-#                         names(as_input) <- TFs[,1]
-#                         return(as_input)
-#                         })
-```
-
-
-Consensus
-Consensus and MLM both have a two-step approach, as it does not allow for colinear regulons, these will be filtered out of the PKN before using it as input. 
-1. Adjusting PKN
-```{r}
-
-# correlated_regulons <- decoupleR::check_corr(ci_regulons)
-# 
-# correlated_vars <- correlated_regulons |>
-#   filter(correlation > 0.5 | correlation < -0.5  ) |>
-#   dplyr::select(source, source.2) |>
-#   unlist()
-# 
-# ci_regulons_no_cor <- ci_regulons |>
-#   filter(!(source %in% correlated_vars | target %in% correlated_vars))
-```
-
-2. Combining new PKN and gene expression data to estimate TF activities
-```{r}
-# RNA_scaled <- T0_transcriptomic
-# 
-# T0_TF_activities <- apply(RNA_scaled,2,function(x){
-#   x <- as.data.frame(x[which(!is.na(x))])
-#   TFs <- decouple(as.matrix(x), # actual running of TF activity estimation function
-#                    network = unique(ci_regulons_no_cor), 
-#                   # statistics = c("ulm", "mlm", "wmean"),
-#                   # args = list(
-#                   #   ulm = list(.mor = "mor", .likelihood = "likelihood"),
-#                   #   mlm = list(.mor = "mor", .likelihood = "likelihood"),
-#                   #   wmean = list(.mor = "mor", .likelihood = "likelihood"))
-#                   #   ),
-#                    minsize = 20)
-#   TFS <- run_consensus(TFs)
-#   # print(head(TFs))
-#   TFs <- as.data.frame(TFs) # Reformatting into cosmos input format
-#   TFs <- TFs[which(TFs$statistic == "consensus"),c(3,5)]
-#   # print(head(TFs))
-#   as_input <- TFs[,2]
-#   # print(head(as_input))
-#   names(as_input) <- TFs[,1]
-#   # print(head(as_input))
-#   return(as_input)
-#   })
-```
-
-Note that it is also possible to un-comment the statistics and args arguments in the decouple function to edit the statistical methods that are being weighted in the consensus function. By using the default values, we are using the methods mlm, ulm and wsum. 
-
-Overview available methods:
-<https://decoupler-py.readthedocs.io/en/latest/notebooks/usage.html>
-
-MLM
-```{r}
-# RNA_scaled <- T0_transcriptomic
-# 
-# T0_TF_activities <- apply(RNA_scaled,2,function(x){
-#                         x <- as.data.frame(x[which(!is.na(x))]) # no NAs allowed
-#                         TFs <- run_mlm(as.matrix(x), # actual running of TF activity estimation function
-#                                          network = unique(ci_regulons_no_cor),
-#                                          # times = 1000,
-#                                          minsize = 20)
-#                         TFs <- as.data.frame(TFs) # Reformatting into cosmos input format
-#                         TFs <- TFs[which(TFs$statistic == "mlm"),c(2,4)]
-#                         as_input <- TFs[,2]
-#                         names(as_input) <- TFs[,1]
-#                         return(as_input)
-#                         })
-```
+The method exploration is at the end of this document. For now, only the main methods ULM will be used to estimate TF activity from gene expression data.
 
 
 ### Applying method
-The consensus method will be applied as this one is described in literature to be the most consistent and best performing [1].
-
-Preprocessing step:
-```{r}
-# correlated_regulons <- decoupleR::check_corr(ci_regulons)
-# 
-# correlated_vars <- correlated_regulons |>
-#   filter(correlation > 0.5 | correlation < -0.5  ) |>
-#   dplyr::select(source, source.2) |>
-#   unlist()
-# 
-# ci_regulons_no_cor <- ci_regulons |>
-#   filter(!(source %in% correlated_vars | target %in% correlated_vars))
-```
-
-T0:
-```{r}
-# RNA_scaled <- T0_transcriptomic
-# 
-# T0_TF_activities <- apply(RNA_scaled,2,function(x){
-#   x <- as.data.frame(x[which(!is.na(x))])
-#   TFs <- decouple(as.matrix(x), # actual running of TF activity estimation function
-#                    network = unique(ci_regulons_no_cor),
-#                    # times = 1000,
-#                    minsize = 20)
-#   TFS <- run_consensus(TFs)
-#   # print(head(TFs))
-#   TFs <- as.data.frame(TFs) # Reformatting into cosmos input format
-#   TFs <- TFs[which(TFs$statistic == "consensus"),c(3,5)]
-#   # print(head(TFs))
-#   as_input <- TFs[,2]
-#   # print(head(as_input))
-#   names(as_input) <- TFs[,1]
-#   # print(head(as_input))
-#   return(as_input)
-# })
-
-```
-
-T48:
-```{r}
-# RNA_scaled <- T48_transcriptomic
-# 
-# T48_TF_activities <- apply(RNA_scaled,2,function(x){
-#   x <- as.data.frame(x[which(!is.na(x))])
-#   TFs <- decouple(as.matrix(x), # actual running of TF activity estimation function
-#                    network = unique(ci_regulons_no_cor),
-#                    # times = 1000,
-#                    minsize = 20)
-#   TFS <- run_consensus(TFs)
-#   # print(head(TFs))
-#   TFs <- as.data.frame(TFs) # Reformatting into cosmos input format
-#   TFs <- TFs[which(TFs$statistic == "consensus"),c(3,5)]
-#   # print(head(TFs))
-#   as_input <- TFs[,2]
-#   # print(head(as_input))
-#   names(as_input) <- TFs[,1]
-#   # print(head(as_input))
-#   return(as_input)
-  # })
-```
-
-Wmean is used in the Factor_no COSMOS pipeline, so I want to try that too:
-T0:
-```{r}
-# RNA_scaled <- T0_transcriptomic
-# 
-# T0_TF_activities <- apply(RNA_scaled,2,function(x){
-#                         x <- as.data.frame(x[which(!is.na(x))])
-#                         TFs <- run_wmean(as.matrix(x),
-#                                          network = unique(ci_regulons),
-#                                          times = 1000,
-#                                          minsize = 20)
-#                         TFs <- as.data.frame(TFs)
-#                         TFs <- TFs[which(TFs$statistic == "norm_wmean"),c(2,4)]
-#                         as_input <- TFs[,2]
-#                         names(as_input) <- TFs[,1]
-#                         return(as_input)
-#                         })
-```
-
-T48:
-```{r}
-# RNA_scaled <- T48_transcriptomic
-# 
-# T48_TF_activities <- apply(RNA_scaled,2,function(x){
-#                         x <- as.data.frame(x[which(!is.na(x))])
-#                         TFs <- run_wmean(as.matrix(x),
-#                                          network = unique(ci_regulons),
-#                                          times = 1000,
-#                                          minsize = 20)
-#                         TFs <- as.data.frame(TFs)
-#                         TFs <- TFs[which(TFs$statistic == "norm_wmean"),c(2,4)]
-#                         as_input <- TFs[,2]
-#                         names(as_input) <- TFs[,1]
-#                         return(as_input)
-#                         })
-```
 
 #### ULM
 T0
@@ -432,9 +227,8 @@ RNA_scaled <- T0_transcriptomic
 T0_TF_activities <- apply(RNA_scaled,2,function(x){
                         x <- as.data.frame(x[which(!is.na(x))]) # no NAs allowed
                         TFs <- run_ulm(as.matrix(x), # actual running of TF activity estimation function
-                                         network = unique(ci_regulons),
-                                         # times = 1000,
-                                         minsize = 20)
+                                       network = unique(ci_regulons),
+                                       minsize = 20)
                         TFs <- as.data.frame(TFs) # Reformatting into cosmos input format
                         TFs <- TFs[which(TFs$statistic == "ulm"),c(2,4)]
                         as_input <- TFs[,2]
@@ -458,42 +252,6 @@ T48_TF_activities <- apply(RNA_scaled,2,function(x){
                         names(as_input) <- TFs[,1]
                         return(as_input)
                         })
-```
-
-#### MLM
-T0
-```{r}
-# RNA_scaled <- T0_transcriptomic
-# 
-# T0_TF_activities <- apply(RNA_scaled,2,function(x){
-#                         x <- as.data.frame(x[which(!is.na(x))]) # no NAs allowed
-#                         TFs <- run_mlm(as.matrix(x), # actual running of TF activity estimation function
-#                                          network = unique(ci_regulons_no_cor),
-#                                          # times = 1000,
-#                                          minsize = 20)
-#                         TFs <- as.data.frame(TFs) # Reformatting into cosmos input format
-#                         TFs <- TFs[which(TFs$statistic == "mlm"),c(2,4)]
-#                         as_input <- TFs[,2]
-#                         names(as_input) <- TFs[,1]
-#                         return(as_input)
-#                         })
-```
-T48
-```{r}
-# RNA_scaled <- T48_transcriptomic
-# 
-# T48_TF_activities <- apply(RNA_scaled,2,function(x){
-#                         x <- as.data.frame(x[which(!is.na(x))]) # no NAs allowed
-#                         TFs <- run_mlm(as.matrix(x), # actual running of TF activity estimation function
-#                                          network = unique(ci_regulons_no_cor),
-#                                          # times = 1000,
-#                                          minsize = 20)
-#                         TFs <- as.data.frame(TFs) # Reformatting into cosmos input format
-#                         TFs <- TFs[which(TFs$statistic == "mlm"),c(2,4)]
-#                         as_input <- TFs[,2]
-#                         names(as_input) <- TFs[,1]
-#                         return(as_input)
-#                         })
 ```
 
 
@@ -583,4 +341,116 @@ Laptop
 # save(T48_cosmos_inputs, file = "../ourdata/cosmos/T48_cosmos_inputs.RData")
 
 ```
+
+
+
+## Method exploration
+For now, methods wmean, Ulm, mlm and consensus are explored.
+Each is tested using the T0 gene expression dataset. This can be easily adjusted to be any other (preprocessed) dataset. 
+
+### Wmean
+```{r}
+# RNA_scaled <- T0_transcriptomic
+# 
+# T0_TF_activities <- apply(RNA_scaled,2,function(x){
+#                         x <- as.data.frame(x[which(!is.na(x))])
+#                         TFs <- run_wmean(as.matrix(x),
+#                                          network = unique(ci_regulons),
+#                                          times = 1000,
+#                                          minsize = 20)
+#                         TFs <- as.data.frame(TFs)
+#                         TFs <- TFs[which(TFs$statistic == "norm_wmean"),c(2,4)]
+#                         as_input <- TFs[,2]
+#                         names(as_input) <- TFs[,1]
+#                         return(as_input)
+#                         })
+```
+
+### ULM
+```{r}
+# RNA_scaled <- T0_transcriptomic
+# 
+# T0_TF_activities <- apply(RNA_scaled,2,function(x){
+#                         x <- as.data.frame(x[which(!is.na(x))]) # no NAs allowed
+#                         TFs <- run_ulm(as.matrix(x), # actual running of TF activity estimation function
+#                                          network = unique(ci_regulons),
+#                                          # times = 1000,
+#                                          minsize = 20)
+#                         TFs <- as.data.frame(TFs) # Reformatting into cosmos input format
+#                         print(head(TFs))
+#                         TFs <- TFs[which(TFs$statistic == "ulm"),c(2,4)]
+#                         as_input <- TFs[,2]
+#                         names(as_input) <- TFs[,1]
+#                         return(as_input)
+#                         })
+```
+
+
+### Consensus
+Consensus and MLM both have a two-step approach, as it does not allow for colinear regulons, these will be filtered out of the PKN before using it as input. 
+1. Adjusting PKN
+```{r}
+
+# correlated_regulons <- decoupleR::check_corr(ci_regulons)
+# 
+# correlated_vars <- correlated_regulons |>
+#   filter(correlation > 0.5 | correlation < -0.5  ) |>
+#   dplyr::select(source, source.2) |>
+#   unlist()
+# 
+# ci_regulons_no_cor <- ci_regulons |>
+#   filter(!(source %in% correlated_vars | target %in% correlated_vars))
+```
+
+2. Combining new PKN and gene expression data to estimate TF activities
+```{r}
+# RNA_scaled <- T0_transcriptomic
+# 
+# T0_TF_activities <- apply(RNA_scaled,2,function(x){
+#   x <- as.data.frame(x[which(!is.na(x))])
+#   TFs <- decouple(as.matrix(x), # actual running of TF activity estimation function
+#                    network = unique(ci_regulons_no_cor),
+#                   # statistics = c("ulm", "mlm", "wmean"),
+#                   # args = list(
+#                   #   ulm = list(.mor = "mor", .likelihood = "likelihood"),
+#                   #   mlm = list(.mor = "mor", .likelihood = "likelihood"),
+#                   #   wmean = list(.mor = "mor", .likelihood = "likelihood"))
+#                   #   ),
+#                    minsize = 20)
+#   TFS <- run_consensus(TFs)
+#   # print(head(TFs))
+#   TFs <- as.data.frame(TFs) # Reformatting into cosmos input format
+#   TFs <- TFs[which(TFs$statistic == "consensus"),c(3,5)]
+#   # print(head(TFs))
+#   as_input <- TFs[,2]
+#   # print(head(as_input))
+#   names(as_input) <- TFs[,1]
+#   # print(head(as_input))
+#   return(as_input)
+#   })
+```
+
+Note that it is also possible to un-comment the statistics and args arguments in the decouple function to edit the statistical methods that are being weighted in the consensus function. By using the default values, we are using the methods mlm, ulm and wsum. 
+
+Overview available methods:
+<https://decoupler-py.readthedocs.io/en/latest/notebooks/usage.html>
+
+### MLM
+```{r}
+# RNA_scaled <- T0_transcriptomic
+# 
+# T0_TF_activities <- apply(RNA_scaled,2,function(x){
+#                         x <- as.data.frame(x[which(!is.na(x))]) # no NAs allowed
+#                         TFs <- run_mlm(as.matrix(x), # actual running of TF activity estimation function
+#                                          network = unique(ci_regulons_no_cor),
+#                                          # times = 1000,
+#                                          minsize = 20)
+#                         TFs <- as.data.frame(TFs) # Reformatting into cosmos input format
+#                         TFs <- TFs[which(TFs$statistic == "mlm"),c(2,4)]
+#                         as_input <- TFs[,2]
+#                         names(as_input) <- TFs[,1]
+#                         return(as_input)
+#                         })
+```
+
 

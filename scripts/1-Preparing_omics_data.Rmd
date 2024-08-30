@@ -290,9 +290,6 @@ T48_metabs <- T48_metabs[,-c(1,11,12,13,14,15)]
 # Fix T0 order of columns (CLL first, then control)
 T0_metabs <- T0_metabs[,c(6,7,8,9,10,1,2,3,4,5)]
 
-# Remove T48 Control_03, as there is no gene expression data available
-T48_metabs <- T48_metabs[,c(-7)] # this is necessary as the GE column names are later used for metab column names. Uniformity. 
-
 # removing unnecessary variables / values
 rm(T0_path)
 rm(T48_path)
@@ -359,10 +356,59 @@ T48_metabs <- T48_metabs[,-which(names(T48_metabs) %in% c("Analyte.name"))]
 
 Note that this happens later in the 'classic' FACTOR_Cosmos pipeline.
 
-Step 3. Changing column names to match the column names of RNA datasets
+Step 3. Changing column names to match the column name format of gene expression dataset.
 ```{r}
-names(T0_metabs) <- names(T0_RNA_FPKM)
-names(T48_metabs) <- names(T48_RNA_FPKM)
+#Hardcoded names. Cannot do it otherwise. Source: 
+T0_metab_names <- data.frame(Nomenclature = c(
+  "CLL_01",
+  "CLL_02",
+  "CLL_03",
+  "CLL_04",
+  "CLL_05",
+  "Control_01",
+  "Control_02",
+  "Control_03",
+  "Control_04",
+  "Control_05"), Samples = c(
+  "CLL2577_T0",
+  "CLL3045_T0",
+  "CLL2771_T0",
+  "CLL2474_T0",
+  "CLL2654_T0",
+  "HD91_T0",
+  "HD92_T0",
+  "HD93_T0",
+  "HD94_T0",
+  "HD96_T0"))
+T48_metab_names <- data.frame(Nomenclature = c(
+  "CLL_01",
+  "CLL_02",
+  "CLL_03",
+  "CLL_04",
+  "CLL_05",
+  "Control_01",
+  "Control_02",
+  "Control_03",
+  "Control_04",
+  "Control_05"), Samples = c(
+  "CLL2789_T48",
+  "CLL2479_T48",
+  "CLL3024_T48",
+  "CLL2648_T48",
+  "CLL2105_T48",
+  "HD108_T48",
+  "HD110_T48",
+  "HD111_T48",
+  "HD112_T48",
+  "HD113_T48"))
+T0_rename <- setNames(T0_metab_names$Samples, T0_metab_names$Nomenclature)
+T48_rename <- setNames(T48_metab_names$Samples, T48_metab_names$Nomenclature)
+
+# Rename columns of T0_metabs using the named vector
+names(T0_metabs) <- T0_rename[names(T0_metabs)]
+
+# Rename columns of T48_metabs using the named vector
+names(T48_metabs) <- T48_rename[names(T48_metabs)]
 ```
 
 
@@ -388,9 +434,6 @@ write.csv(T48_RNA_log2_FPKM,file =
             "L:\\basic\\divg\\EXIM\\ImmunoHematology\\Cathy Magnée\\Data\\CD3_HDvsCLL\\Transcriptomic\\T48_RNA_log2_FPKM.csv")
 
 ## Metabolites
-write.csv(T0_metabs,file = "L:\\basic\\divg\\EXIM\\ImmunoHematology\\Cathy Magnée\\Data\\CD3_HDvsCLL\\Metabolomic\\T0_metabs_raw.csv")
-write.csv(T48_metabs,file = "L:\\basic\\divg\\EXIM\\ImmunoHematology\\Cathy Magnée\\Data\\CD3_HDvsCLL\\Metabolomic\\T48_metabs_raw.csv")
-
 write.csv(T0_metabs,file = "L:\\basic\\divg\\EXIM\\ImmunoHematology\\Cathy Magnée\\Data\\CD3_HDvsCLL\\Metabolomic\\T0_metabs_hmdb.csv")
 write.csv(T48_metabs,file = "L:\\basic\\divg\\EXIM\\ImmunoHematology\\Cathy Magnée\\Data\\CD3_HDvsCLL\\Metabolomic\\T48_metabs_hmdb.csv")
 

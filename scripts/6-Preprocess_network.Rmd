@@ -21,15 +21,17 @@ library(dplyr)
 library(stringr)
 ```
 
-
-Loop:
-```{r, include=FALSE}
-
+Set variables, what networks do you want to preprocess?
+```{r}
 # edit these based on variables just to create network
 max_depth <- 3
 stim_point <- "T48"
 filter <- "s15m05" 
 
+```
+
+Setting paths based on the above set variables:
+```{r}
 # Path to where the data should be at AMC pc:
 core_path <- "L:/basic/divg/EXIM/ImmunoHematology/Cathy Magnée/Data/CD3_HDvsCLL/CosmosR"
 
@@ -40,30 +42,25 @@ result_path <- paste(result_path, "/csvs/", sep = "") # Add csv folder
 
 data_path <- paste(core_path, result_path, sep = "")
 
-# path where data should be at personal laptop:
-# core_path <- "C:/Users/Cathy.LAPTOP-SDFOSKVI/Documents/School_files/SysBio_RP/COSMOS_EXIM/results"
-# result_path <- paste("/d", max_depth, sep = "") # Add depth folder
-# data_path <- paste(core_path, result_path, sep = "")
-
-# Path to where result will be saved to:
-
-# SIF_path <- paste("../results/d", paste(max_depth, paste(patient, "_SIF_full.csv", sep = ""), sep = ""), sep = "")
-# ATT_path <- paste("../results/d", paste(max_depth, paste(patient, "_ATT_full.csv",sep = ""), sep = ""), sep = "")
-
-# SIF_path <- paste("../results/Networks/d7_filter11_h4_T48/d", paste(max_depth, paste(patient, "_SIF_full.csv", sep = ""), sep = ""), sep = "")
-# ATT_path <- paste("../results/Networks/d7_filter11_h4_T48/d", paste(max_depth, paste(patient, "_ATT_full.csv",sep = ""), sep = ""), sep = "")
-
-
-# SIF <- read_csv(SIF_path)
-# ATT <- read_csv(ATT_path)
-
-
 # Edit below to what you want to preprocess
 all_files <- list.files(path = data_path, pattern = "*_SIF_full.csv", full.names = TRUE)
+```
+
+Loop through files available at specified location. In this loop, the following things happen:
+- MoleculeType column is added
+- Nodenames are adjusted
+- removal of duplicate nodes and edges (summarized to mean)
+Things that you can uncomment if you want, but I do not recommend:
+- Remove _c and _m suffixes (which stand for cytosol and mitochondrial respectively)
+  Do not remove if you want to keep this info in the network
+- Add Activity_ and Measured_In_ columns that are unique to the patient/sample
+  Useful if you import into cytoscape directly and want to merge the networks there. Not useful if you use 7 - Cytoscape.Rmd
+  
+```{r, include=FALSE}
 for (files in all_files){
   patient <- str_extract(files, "[^/]+(?=_SIF)")
   
-  # insert paths
+  # Importing SIF and ATT file for each available patient / HD sample
   SIF_path <- paste(data_path, paste(patient, "_SIF_full.csv", sep = ""), sep = "")
   SIF <- read_csv(SIF_path)
   SIF <- unique(SIF)
@@ -72,6 +69,7 @@ for (files in all_files){
   ATT <- read_csv(ATT_path)
   ATT <- unique(ATT)
   
+  # Creating MoleType df for Metabs 
   MolType_df <- data.frame()
   for(nodes in ATT$Nodes){
     # print(substr(nodes, 0, 5))
@@ -86,14 +84,20 @@ for (files in all_files){
     }
     
   }
+  # Creating MoleculeType column. This will be built on in 7 - Cytoscape.Rmd
   ATT <- merge(ATT, MolType_df, by.x = "Nodes", by.y = "Node", all.x = T)
   
   # Sub Enzyme0000__ (random numbers) to Enzyme_
   SIF$Node1 <- sub("Enzyme[0-9]+__", "Enzyme_", SIF$Node1)
   SIF$Node2 <- sub("Enzyme[0-9]+__", "Enzyme_", SIF$Node2)
-  ATT$Nodes  <- sub("Enzyme[0-9]+__", "Enzyme_", ATT$Nodes)
-  
-  # Remove Metab__ 
+  ATT$Nodes <- sub("Enzyme[0-9]+__", "Enzyme_", ATT$Nodes)
+
+  #Filter these rando Enzymes to collaborate (all become 1, mean of availables)
+  ATT <- ATT %>%
+    group_by(Nodes) %>% # Group by the Nodes column
+    summarize(across(everything(), mean, na.rm = TRUE))
+
+  # Remove Metab__ part of Node names
   SIF$Node1 <- sub(".*__", "", SIF$Node1)
   SIF$Node2 <- sub(".*__", "", SIF$Node2)
   ATT$Nodes<- sub(".*__", "", ATT$Nodes)
@@ -106,9 +110,9 @@ for (files in all_files){
   ATT$Nodes<- sub(',', "", ATT$Nodes)
   
   SIF <- SIF |>
-  filter(Node1 != Node2) |> # First removing nodes that are re-activating themselves
-  group_by(Node1, Sign, Node2) |>
-  summarize(Weight = sum(Weight), .groups='drop')
+    filter(Node1 != Node2) |> # First removing nodes that are re-activating themselves
+    group_by(Node1, Sign, Node2) |>
+    summarize(Weight = sum(Weight), .groups='drop')
   
   # Remove _c and _m from Node names (metabolites). But write down in NodeType # Cancelled because it gives information about cell system.
   # ATT$NodeType <- ifelse(grepl("_c$", ATT$Nodes) & is.na(ATT$NodeType), "C", ATT$NodeType)
@@ -122,13 +126,13 @@ for (files in all_files){
   # SIF$Node2 <- sub("_c", "", SIF$Node2)
   # ATT$Nodes<- sub("_c", "", ATT$Nodes)
   
-  # Add additional column "Acticity_ (patient network name)". This will make network processing within cytoscape easier.
-  temp <- paste("Activity_", patient, "")
-  ATT[temp] <- ATT$Activity
-
-  # Add additional column "In_(patient network name)". This will make network processing within cytoscape easier.
-  temp <- paste("In_", patient,sep = "")
-  ATT[temp] <- 1
+  # # Add additional column "Acticity_ (patient network name)". This will make network processing within cytoscape easier.
+  # temp <- paste("Activity_", patient, "")
+  # ATT[temp] <- ATT$Activity
+  # 
+  # # Add additional column "In_(patient network name)". This will make network processing within cytoscape easier.
+  # temp <- paste("In_", patient,sep = "")
+  # ATT[temp] <- 1
  
   # Saving processed csvs
   # result_path <- paste("/processed_results/d", max_depth, sep = "") # Laptop only
