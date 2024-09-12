@@ -1,0 +1,404 @@
+---
+title: "7 - Cytoscape"
+author: "Cathy Magnée"
+date: "2024-09-10"
+output: html_document
+editor_options: 
+  markdown: 
+    wrap: 72
+---
+
+## Cytoscape
+
+This R Markdown document is the seventh in the EXIM COSMOS project
+pipeline, where multi-omics data is transformed into networks to compare
+between the T cell mechanistic networks of healthy donors and CLL
+patients. The goal of this document is to transform, merge and visualize
+the networks created in step 5 and processed in step 6 of the pipeline.
+
+### Loading libraries
+
+```{r}
+library(RCy3)
+library(readr)
+library(stringr)
+library(dplyr)
+```
+
+## Creating functions
+
+Three functions are utilized in this script. The first one processes and
+merges the available files, second one filtered the merged files, the third one creates the network.
+
+Function 1: Process and merge files:
+This function loops through the available network files (based on variables that you can edit below), checks if it is a CLL or HD network, then merges accordingly. It creates column Measured, which counts in how many networks this node is present. 
+```{r}
+# Define the process_files function with a single customizable filter function
+merge_files <- function(all_files, data_path, group_type) {
+  Merged_SIF <- data.frame()
+  Merged_ATT <- data.frame()
+  for (files in all_files){
+    # Extract patient information from file name
+    patient <- str_extract(files, "[^/]+(?=_SIF)")
+    
+    # Import processed SIF and ATT files for the patient
+    SIF_path <- paste(data_path, paste(patient, "_SIF_processed.csv", sep = ""), sep = "")
+    SIF <- read_csv(SIF_path, show_col_types = FALSE) |> unique()
+    
+    ATT_path <- paste(data_path, paste(patient, "_ATT_processed.csv", sep = ""), sep = "")
+    ATT <- read_csv(ATT_path, show_col_types = FALSE) |> unique()
+    
+    # Check if CLL or HD patient
+    if (startsWith(patient, group_type)){
+      # Edges / SIF part
+      for (i in 1:nrow(SIF)) { 
+        Edge <- SIF[i, ] 
+        Merged_SIF <- rbind(Merged_SIF, Edge) 
+      } # Merge result: All edges for all CLL patiens
+      
+      # Nodes / ATT part
+      for (Noderow in unique(ATT$Nodes)) {
+        # If node already in merged:
+        if (Noderow %in% Merged_ATT$Nodes) { 
+          # Show in Measured that it is Measured in +1 sample
+          Merged_ATT$Measured[Merged_ATT$Nodes == Noderow] <- 
+            Merged_ATT$Measured[Merged_ATT$Nodes == Noderow] + 1 
+          # Also activity == mean activity between what is available
+          Merged_ATT$Activity[Merged_ATT$Nodes == Noderow] <- (Merged_ATT$Activity[Merged_ATT$Nodes == Noderow] + mean(
+            ATT$Activity[ATT$Nodes == Noderow])) #/ Merged_ATT$Measured[Merged_ATT$Nodes == Noderow] 
+        } else { # If node does not exists in Merged yet (new node)
+          # Add node to merged df
+          new_row <- list(
+            Nodes = Noderow,
+            Measured = 1,
+            measured = mean(ATT$measured[ATT$Nodes == Noderow]),
+            MoleculeType = ATT$MoleculeType[ATT$Nodes == Noderow][1],
+            Activity = mean(ATT$Activity[ATT$Nodes == Noderow])
+          )
+          Merged_ATT <- rbind(Merged_ATT, new_row)
+        }
+      }
+    }
+  }
+  Merged_ATT$Activity <- Merged_ATT$Activity/Merged_ATT$Measured
+  return(list(
+    Merged_ATT = Merged_ATT,
+    Merged_SIF = Merged_SIF
+  ))
+}
+
+
+```
+
+Function 2: Filter functions
+
+Note: Also includes filter functions. Filter functions encompass the
+decisions of what nodes you want to keep when merging the network. The
+decision is between:
+
+-   max:
+
+    Only the nodes present in all sample networks will be kept (very
+    strict).
+
+-   minus:
+
+    Nodes present in all but one of the available networks will be kept.
+
+-   majority:
+
+    All nodes present in the majority of the network (more than half)
+    will be kept (least strict).
+
+-   min:
+
+    Nodes present in \>= the minimum amount of samples available will be
+    kept.
+
+Now, the code:
+```{r}
+
+filter_merged_files <- function(ATT, SIF, filter_function){
+  Merged_ATT <- unique(ATT)
+  Merged_SIF <- unique(SIF)
+
+  Filtered_Merged_ATT <- filter_function(Merged_ATT)
+  
+  # Only keep edges for which both nodes are present in the network
+  Merged_SIF <- Merged_SIF |>
+    filter(Node1 %in% Filtered_Merged_ATT$Nodes) |>
+    filter(Node2 %in% Filtered_Merged_ATT$Nodes)
+  
+   # Summarize edge weights
+  Merged_SIF <- Merged_SIF |>
+    group_by(Node1, Node2, Sign) |>
+    summarize(Weight = mean(Weight), .groups = 'drop')
+  
+  return(list(
+    Filtered_Merged_ATT = Filtered_Merged_ATT,
+    Merged_SIF = Merged_SIF))
+}
+# Define filter functions
+minus_filter_function <- function(Merged_ATT) {
+  filter(Merged_ATT, Measured >= max(Measured)-1)
+}
+
+# Majority filter
+majority_filter_function <- function(Merged_ATT) {
+  filter(Merged_ATT, Measured > max(Measured)/ 2)
+}
+
+# Define the max filter function (Measured == max(Measured))
+max_filter_function <- function(Merged_ATT) {
+  filter(Merged_ATT, Measured == max(Measured))
+}
+
+# Extra filter: Keeps nodes
+min_filter_function <- function(Merged_ATT) {
+  filter(Merged_ATT, Measured >= min_samples)
+}
+
+# To call the function with majority filter:
+# result <- process_files(all_files, data_path, majority_filter_function)
+
+# To call the  function with minus filter:
+# result <- process_files(all_files, data_path, minus_filter_function)
+
+# To call the function with max filter:
+# result <- process_files(all_files, data_path, max_filter_function)
+
+
+```
+
+Function 3: Create networks in cytoscape:
+
+```{r}
+Create_Network <- function(ATT, SIF, MergedGroup){
+  # Translate this to Node Table and Edges Table for in Cytoscape
+  nodes <- data.frame(id = ATT$Nodes,
+                      Activity = ATT$Activity,
+                      measured = ATT$measured,
+                      moleculeType = ATT$MoleculeType,
+                      stringsAsFactors = F)
+  edges <- data.frame(source = SIF$Node1,
+                      target = SIF$Node2,
+                      interaction = as.character(SIF$Sign),
+                      weight = SIF$Weight,
+                      stringsAsFactors = FALSE)
+  
+  # Two things: 1: Adding moleculeType column to nodes table; 2: putting shapes to these
+  # Step 1 should be done earlier, maybe in 6 - Preprocess_network.Rmd.
+  #StringDB Tryout
+  ATT_string_interaction_cmd <- paste('string protein query taxonID=9606 cutoff=0.9 query=', paste(nodes$id, collapse=","),'"',sep="")
+  commandsGET(ATT_string_interaction_cmd )
+  string_nodes <- getTableColumns(table = "node", columns = c("display name", "target::family"), network = "STRING network")
+  colnames(string_nodes) <- c("id", "moleculeType")
+  write.csv(string_nodes, file = paste(data_path, paste(MergedGroup, ".csv", sep = ""), sep = "StringDB_"))
+  string_nodes <- merge(nodes, string_nodes, by = "id", all.x = T)
+  
+  nodes$moleculeType <- ifelse(is.na(string_nodes$moleculeType.x), #If x is NA, put in y, if x is not na, put in x. 
+                                     string_nodes$moleculeType.y,  # moleculeType <- , else (in which case, x is not NA)
+                                     string_nodes$moleculeType.x) # moleculeType <- x
+  nodes$moleculeType[is.na(nodes$moleculeType)] <- "Other"
+  print(nodes)
+  
+  
+  closeSession(save.before.closing = F)
+
+  
+  createNetworkFromDataFrames(nodes, edges, title = MergedGroup, collection = MergedGroup) # if(substr(MergedGroup, 0, 3)== "CLL"){"CLL"} else { "HD"})
+  # You should see a network rn frfr
+  
+  # Setting style for network OR creating it first, then setting the style. If else so we do not remake this style over and over.
+  if (style.name == "COSMOS_Style"){
+    setVisualStyle(style.name)
+  } else {
+    style.name = "COSMOS_Style"
+    defaults <- list(NODE_SHAPE="ROUND_RECTANGLE",
+                     NODE_SIZE=50,
+                     EDGE_TRANSPARENCY=255)
+    nodeLabels <- mapVisualProperty('node label','id','p')
+    nodeFills <- mapVisualProperty('node fill color',
+                                   'Activity',
+                                   'c',
+                                   c(-1, 1),
+                                   c('#CC0000', '#009900'))
+    nodeBorderWidth <- mapVisualProperty('node border width',
+                                         'measured',
+                                         'd',
+                                         c(0.0, 1.0),
+                                         c(0, 4))
+    arrowShapes <- mapVisualProperty('Edge Target Arrow Shape', # What style property we are mapping
+                                     'interaction', # What table column we are using for it
+                                     'd', # Type of mapping (discrete)
+                                     c("-1", "1"),c("T","Arrow"))
+    edgeWidth <- mapVisualProperty('edge width','weight','p')
+  
+  
+    createVisualStyle(style.name, defaults, list(nodeLabels,nodeFills,nodeBorderWidth,arrowShapes,edgeWidth))
+    setVisualStyle(style.name)
+  }
+  
+  
+  # setLayoutProperties("degree-circle")
+  # 2: Connecting shapes to moleculeType
+  
+  column <- 'moleculeType'
+  values <- c ('Metabolite', 'Kinase',
+               'Transcription Factor', 'Other',
+               'Enzyme', 'Epigenetic',
+               'GPCR', 'TF-Epigenetic',
+               'Nuclear Receptor', 'Transporter')
+  shapes <- c ('ELLIPSE', 'TRIANGLE',
+               'DIAMOND', 'PARALLELOGRAM',
+               'RECTANGLE', 'VEE',
+               'HEXAGON', 'DIAMOND',
+               'OCTAGON', 'ROUND RECTANGLE')
+  setNodeShapeMapping (column, values, shapes, style.name = style.name)
+  layoutNetwork("degree-circle")
+  
+  # Save session & a pdf picture of it
+  saveSession(filename = paste(data_path, MergedGroup, sep = "Merged_Network_"))
+  
+  exportImage(paste(data_path, MergedGroup, sep = "Degree_Circle_"), 'PDF') #.pdf
+  
+  
+  # Select nodes that have a high interconnectivity (>10 edges to other nodes)
+  createDegreeFilter("ImportantNodes", criterion = c(10,100), network = MergedGroup, apply = T)
+  Important_Nodes <- data.frame(getSelectedNodes())
+  
+  # IF there are highly interconnected nodes, safe them and their activity.
+  if(length(Important_Nodes)>1){
+    Important_df <- merge(Important_Nodes, Merged_ATT_CLL[c(1,5)], by.x = "getSelectedNodes..", by.y = "Nodes", all.x = T)
+    names(Important_df) <- c("Nodes", "Act_CLL")
+    Important_df <- merge(Important_df, Merged_ATT_HD[c(1,5)], by.x = "Nodes", by.y = "Nodes", all.x = T)
+    names(Important_df) <- c("Nodes", "Act_CLL", "Act_HD")
+    print(Important_df)
+    
+    writeLines(Important_Nodes$getSelectedNodes.., con = paste(data_path, paste(MergedGroup, ".txt", sep = ""), sep = "Important_Nodes_"))
+    write.csv(Important_df, file = paste(data_path, paste(MergedGroup, ".csv", sep = ""), sep = "Important_Nodes_Act_"))
+  }
+}
+```
+
+### Setup Cytoscape
+
+Make sure to have the Cytoscape software open on your device before
+continuing.
+
+```{r}
+cytoscapePing()
+cytoscapeVersionInfo()
+style.name = "empty"
+```
+
+If the above gives an error, either wait for one minute or restart R
+and/or Cytoscape.
+
+### Setup: network Variables
+
+Below are the variables of the networks you want to visualize.
+
+```{r}
+max_depth <- 3
+filter <- "s10m05"
+stim_point <- "T0"
+```
+
+### Setup: network paths
+
+Below is the data path of my AMC pc.
+```{r}
+core_path <- "L:/basic/divg/EXIM/ImmunoHematology/Cathy Magnée/Data/CD3_HDvsCLL/CosmosR"
+result_path <- paste("/Networks/d", max_depth, sep = "") # Add depth folder
+result_path <- paste(result_path, paste("/f", filter, sep = ""), sep = "") # Add filter folder
+result_path <- paste(result_path, paste("/", stim_point, sep = ""), sep = "") # Add stim/unstim point folder
+result_path <- paste(result_path, "/csvs/", sep = "") # Add csv folder
+data_path <- paste(core_path, result_path, sep = "")
+```
+
+And my laptop:
+
+```{r}
+# core_path <- "C:/Users/Cathy.LAPTOP-SDFOSKVI/Documents/School_files/SysBio_RP/COSMOS_EXIM/results/processed_results"
+# result_path <- paste("/d", max_depth, sep = "") # Add depth folder
+# data_path <- paste(core_path, result_path, sep = "")
+```
+
+Adjust this accordingly to your device and placement of files.
+
+### Setup: other variables
+
+```{r}
+# Style name will later be replaced in creating network function
+style.name = "empty"
+
+# Place where all the files are that you will be merging then vizualizing 
+all_files <- list.files(path = data_path, pattern = "*_SIF_processed.csv", full.names = TRUE)
+
+min_samples <- min(length(which(grepl("csvs/CLL", all_files))), length(which(grepl("csvs/HD", all_files))))
+
+
+```
+
+## Merging networks:
+
+Processing and merging networks: Choose one Default for me right now is
+minus. This seems to be the most balanced option. I will also be
+exploring the max function.
+
+```{r}
+# CLL Merging
+result <- merge_files(all_files, data_path, "CLL")
+Merged_ATT_CLL <- result$Merged_ATT
+Merged_SIF_CLL <- result$Merged_SIF 
+
+# HD Merging
+result <- merge_files(all_files, data_path, "HD")
+Merged_ATT_HD <- result$Merged_ATT
+Merged_SIF_HD <- result$Merged_SIF 
+
+# CLL
+result <- filter_merged_files(Merged_ATT_CLL, Merged_SIF_CLL, majority_filter_function)
+# result <- filter_merged_files(Merged_ATT_CLL, Merged_SIF_CLL, minus_filter_function)
+# result <- filter_merged_files(Merged_ATT_CLL, Merged_SIF_CLL, max_filter_function)
+# result <- filter_merged_files(Merged_ATT_CLL, Merged_SIF_CLL, min_filter_function)
+
+Filtered_Merged_ATT_CLL <- result$Filtered_Merged_ATT
+Merged_SIF_CLL <- result$Merged_SIF 
+
+# HD
+result <- filter_merged_files(Merged_ATT_HD, Merged_SIF_HD, majority_filter_function)
+# result <- filter_merged_files(Merged_ATT_HD, Merged_SIF_HD, minus_filter_function)
+# result <- filter_merged_files(Merged_ATT_HD, Merged_SIF_HD, max_filter_function)
+# result <- filter_merged_files(Merged_ATT_HD, Merged_SIF_HD, min_filter_function)
+
+Filtered_Merged_ATT_HD <- result$Filtered_Merged_ATT
+Merged_SIF_HD <- result$Merged_SIF 
+
+
+```
+
+
+### Creating networks for merged:
+
+```{r}
+# CLL
+Create_Network(ATT = Filtered_Merged_ATT_CLL, SIF= Merged_SIF_CLL, MergedGroup = paste(stim_point, "CLL", sep = "_"))
+
+# HD
+Create_Network(ATT = Filtered_Merged_ATT_HD, SIF= Merged_SIF_HD, MergedGroup = paste(stim_point, "HD", sep = "_"))
+
+```
+
+#### Creating networks for individuals:
+
+```{r}
+# patient = "CLL2105_T48" # Fill it in
+# SIF_path <- paste(data_path, paste(patient, "_SIF_processed.csv", sep = ""), sep = "")
+# SIF <- read_csv(SIF_path, show_col_types = F)
+# ATT_path <- paste(data_path, paste(patient, "_ATT_processed.csv",sep = ""), sep = "")
+# ATT <- read_csv(ATT_path, show_col_types = F)
+# 
+# Create_Network(ATT = ATT, SIF= SIF, MergedGroup = patient)
+```

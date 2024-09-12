@@ -26,8 +26,7 @@ Set variables, what networks do you want to preprocess?
 # edit these based on variables just to create network
 max_depth <- 3
 stim_point <- "T48"
-filter <- "s15m05" 
-
+filter <- "s10m05" 
 ```
 
 Setting paths based on the above set variables:
@@ -76,6 +75,10 @@ for (files in all_files){
     if(substr(nodes, 0, 5) == "Metab"){
       new_row <- list(Node = nodes,
                       MoleculeType = "Metabolite")
+      MolType_df <- rbind(MolType_df, new_row)
+    } else if(substr(nodes, 0, 5) == "Enzym"){
+      new_row <- list(Node = nodes,
+                      MoleculeType = "Enzyme")
       MolType_df <- rbind(MolType_df, new_row)
     } else {
       new_row <- list(Node = nodes,
@@ -141,8 +144,6 @@ for (files in all_files){
   write_csv(ATT, file = paste(data_path, paste(patient, "_ATT_processed.csv", sep = ""), sep = ""))
   
 }
-
-
 
 ```
 

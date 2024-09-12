@@ -1,8 +1,11 @@
 ---
-title: "5 - Run COSMOS"
+title: "5 - Run COSMOS analysis"
 author: "Cathy Magnée"
 date: "2024-06-25"
 output: html_document
+editor_options: 
+  markdown: 
+    wrap: 72
 ---
 
 ```{r setup, include=FALSE}
@@ -11,16 +14,27 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ## Running COSMOS
 
-This document describes the process of running COSMOS from COSMOS inputs. This will happen for two datafiles in multiple steps. First, the data, metanetwork and packages will be loaded into the environment. Next, the options for CARNIVAL will be chosen and explained. CARNIVAL will run using the COSMOS metanetwork and our data both forward (signalling to metabolism) and back (metabolism to signalling). Finally, the forward and backward outputs will be combined. 
-This will happen first for T0, then for T48. 
+This document describes the process of running COSMOS from COSMOS
+inputs. This will happen for two datafiles in multiple steps. First, the
+data, metanetwork and packages will be loaded into the environment.
+Next, the options for CARNIVAL will be chosen and explained. CARNIVAL
+will run using the COSMOS metanetwork and our data both forward
+(signalling to metabolism) and back (metabolism to signalling). Finally,
+the forward and backward outputs will be combined. This will happen
+first for T0, then for T48.
 
-This script is based of the run_cosmos.R document in the FACTOR_COSMOS github by Saezlab. This document is preceded by the 4 - Preparing COSMOS inputs R markdown document and procedes the 6 - Analyzing COSMOS output R markdown document. 
+This script is based of the run_cosmos.R document in the FACTOR_COSMOS
+github by Saezlab. This document is preceded by the 4 - Preparing COSMOS
+inputs R markdown document and procedes the 6 - Preprocess network R
+markdown document.
 
-This document is annotated to explain the steps and the choices that were made during this project. Other options will be highlighted.
+This document is annotated to explain the steps and the choices that
+were made during this project. Other options will be highlighted.
 
-### Loading
+### Setting up directories, loading libraries and data
 
 Installing packages:
+
 ```{r}
 # make sure that CARNIVAL and COSMOS are installed from github:
 # if(!require("remotes")) install.packages("remotes")
@@ -28,6 +42,7 @@ Installing packages:
 ```
 
 Loading packages:
+
 ```{r}
 start.time <- Sys.time()
 library(cosmosR)
@@ -35,8 +50,7 @@ library(readr)
 library(dplyr)
 ```
 
-Data path::
-AMC:
+Data path: AMC:
 ```{r}
 T0_input_path <- "L:\\basic\\divg\\EXIM\\ImmunoHematology\\Cathy Magnée\\Data\\CD3_HDvsCLL\\CosmosR\\T0_cosmos_inputs.RData"
 T48_input_path <- "L:\\basic\\divg\\EXIM\\ImmunoHematology\\Cathy Magnée\\Data\\CD3_HDvsCLL\\CosmosR\\T48_cosmos_inputs.RData"
@@ -47,8 +61,10 @@ Laptop:
 # T0_input_path <- "../ourdata/cosmos/T0_cosmos_inputs.RData"
 # T48_input_path <- "../ourdata/cosmos/T48_cosmos_inputs.RData"
 ```
+Adjust the above chunks accordingly
 
 Loading data:
+
 ```{r}
 data("meta_network")
 
@@ -57,143 +73,142 @@ meta_network <- meta_network_cleanup(meta_network)
 load(T0_input_path)
 load(T48_input_path)
 
-
-```
-### Choosing variables for network data
-
-Dataset and patient
-```{r}
-cosmos_inputs <- T48_cosmos_inputs # T0 or T48
-names(cosmos_inputs)
-
-patient <- "CLL2479_T48" # Pick a person for who you want to make the network
-
-sig_input <- cosmos_inputs[[patient]]$TF_scores
-metab_input <- cosmos_inputs[[patient]]$metabolomic 
-RNA_input <- cosmos_inputs[[patient]]$RNA
-
-max_depth <- 2
-
-seconds_per_step <- 3600/10 
 ```
 
-The chunk below calculates how many signalling inputs and metabolic inputs are left after filtering for each patients. 
+### Defining Cplex options
+In the code block below, first the my_options list is created. If you
+have a Linux OS, this first line is all you need to run. If not: Same.
+Adjust the options so they fit your requirements. This is the part where
+you must have the IBM Cplex Solver. It is found through academic license
+here:
+<https://community.ibm.com/community/user/ai-datascience/blogs/xavier-nodet1/2020/07/09/cplex-free-for-students>
+It is quite a process to get the installation, as you will also need
+IBMs Download Director (DD) and Java. However, the installer walks you
+through this nicely.
+
+Once you have IBM Cplex solver, adjust the location (though I think it
+should be similar to mine).
 ```{r}
-# ## Chunk to check how much data is available per sample
-cosmos_inputs <- T0_cosmos_inputs # T0 or T48
 
-inputs <- data.frame()
-
-for (patient in names(cosmos_inputs)){
-  sig_input <- cosmos_inputs[[patient]]$TF_scores
-  metab_input <- cosmos_inputs[[patient]]$metabolomic
-
-  RNA_input <- cosmos_inputs[[patient]]$RNA
-  metab_input <- prepare_metab_inputs(metab_input, c("c","m"))
-
-  sig_input <- sig_input[abs(sig_input) > 1.0]
-  metab_input <- metab_input[abs(metab_input) > 0.5]
-
-  metab_input <- cosmosR:::filter_input_nodes_not_in_pkn(metab_input, meta_network)
-  sig_input <- cosmosR:::filter_input_nodes_not_in_pkn(sig_input, meta_network)
-  new_row <- list(
-    patient = patient,
-    n_sig_inpul = length(sig_input),
-    n_metab_input = length(metab_input)
-  )
-  inputs <- rbind(inputs, new_row)
-}
-
-```
-
-The goal of the chunk below is finding out at what point (which filter values) the network creates an error, per sample. This is because manually finding this out has been annoying. For ideal filter values, the following are all true:
-- A network can be created from (almost) all samples (HD and CLL, T0 and T48)
-- The max_depth is low, (2-3)
-- The input values are significant (towards -2 and 2)
-- ?? There is a balanced amount of input values for metabolite and signalling values ?? 
-
-```{r}
-seconds_per_step <- 1
-
-#In order to adapt options to users specification we can load them into a variable 
-#that will then be passed to preprocess_COSMOS_signaling_to_metabolism CARNIVAL_options parameter
 my_options <- default_CARNIVAL_options(solver = "cplex")
-
-#Here the user should provide a path to its CPLEX executable
-
-# my_options$solverPath <- "~/Documents/cplex" #or cbc solver executable
-
 my_options$solverPath <- "C:/Program Files/IBM/ILOG/CPLEX_Studio2211/cplex/bin/x64_win64"
-
-# Change this for your folder. This worked for me, the other options (commented out below) did not.
 my_options$workdir <- "C:/Users/cmagnee/Documents/cplex"
 my_options$outputFolder <- "C:/Users/cmagnee/Documents/cplex"
-
-# my_options$workdir <- "H:/COSMOS_EXIM/cplex"
-# my_options$outputFolder <- "H:/COSMOS_EXIM/cplex"
-
-# my_options$workdir <- file.path(getwd(), "cplex")
-# my_options$outputFolder <- file.path(getwd(), "cplex")
-
-my_options$solver <- "cplex" #or cbc
-
-# max_depth <- 10
-# 
-# seconds_per_step <- 3600/5
-# my_options$solver <- "cbc"
-my_options$timelimit <- seconds_per_step
+my_options$solver <- "cplex"
 my_options$mipGAP <- 0.05
+my_options$poolCap <- 100
+my_options$limitPop <- 500
+my_options$threads <- 19 # Adjust based on your machine
+# my_options$threads <- 6 # My laptop
+my_options$timelimit <- 3600  
 
-# amc computer
-my_options$threads <- 19
+```
 
-# ## Chunk to check how much data is available per sample
-cosmos_inputs <- T48_cosmos_inputs # T0 or T48
+### Defining functions:
 
-inputs_metab <- data.frame(patient = character(), 
-                           n_sig_input = numeric(), 
-                           f_sig = numeric(), 
-                           n_metab_input = numeric(), 
-                           f_metab = numeric(),
-                           stringsAsFactors = FALSE)
+Note for filtering input: Metabolites: Choose which compartment to
+assign to the metabolic measurements: Possible values are "r", "c", "e",
+"x", "m", "l", "n" and "g". More info here
+<http://bigg.ucsd.edu/compartments>
 
-increments <- seq(1.0, 2.0, 0.1)
-# CHATGPT GEnerated based on my old codE:
+"r", endoplasmic reticulum
 
-for (patient in names(cosmos_inputs)) {
-  filter_m <- 1.0  # Reinitialize filter_m once per patient
-  
-  for (filter_s in increments) {
-    # print(filter_m)
-    skip_to_next <- FALSE
-    
-    sig_input <- numeric(0)
-    metab_input <- numeric(0)
-    
+"c", cytosol
+
+"e", extracellular space
+
+"x", peroxisome / glyoxysome
+
+"m", mitochondria
+
+"l", lysosome
+
+"n", nucleus
+
+"g", golgi apparatus
+
+
+### Defining variables, create dfs
+```{r}
+
+max_depth <- 3
+seconds_per_step <- 3600
+
+time_df <- data.frame()
+
+```
+
+The chunk below runs cosmos for both timepoints, according to the variables you set in the chunks above. 
+Do not forget to edit the filter accordingly!
+```{r}
+start.time <- Sys.time()
+for (i in 1:2){
+  cosmos_inputs <- list(T0_cosmos_inputs, T48_cosmos_inputs)[[i]]
+  stim_point <- list("T0", "T48")[[i]]
+  for (patient in names(cosmos_inputs)){
+    skip_to_next <<- F
     tryCatch({
       sig_input <- cosmos_inputs[[patient]]$TF_scores
-      metab_input <- cosmos_inputs[[patient]]$metabolomic
-    
+      metab_input <- cosmos_inputs[[patient]]$metabolomic 
       RNA_input <- cosmos_inputs[[patient]]$RNA
-      metab_input <- prepare_metab_inputs(metab_input, c("c", "m"))
     
-      sig_input <- sig_input[abs(sig_input) > filter_s]
-      metab_input <- metab_input[abs(metab_input) > filter_m]
-    
+      # Filter inputs
+      metab_input <- prepare_metab_inputs(metab_input, c("c","m"))
+      
+      
+      filter <- "s10m05" ## This one is important!! s = signalling input, m = metabolite input filter do not put in the points or smtng
+      sig_input <- sig_input[abs(sig_input) > 1.0] 
+      metab_input <- metab_input[abs(metab_input) > 0.5] 
+      
       metab_input <- cosmosR:::filter_input_nodes_not_in_pkn(metab_input, meta_network)
       sig_input <- cosmosR:::filter_input_nodes_not_in_pkn(sig_input, meta_network)
       
-      max_depth <- 3
-      test_for <- preprocess_COSMOS_signaling_to_metabolism(meta_network = meta_network[, c(1, 3, 2)],
+      # Stp 1
+      test_for <- preprocess_COSMOS_signaling_to_metabolism(meta_network = meta_network[,c(1,3,2)],
                                                             signaling_data = sig_input,
                                                             metabolic_data = metab_input,
                                                             diff_expression_data = RNA_input,
                                                             maximum_network_depth = max_depth,
-                                                            remove_unexpressed_nodes = TRUE,
-                                                            filter_tf_gene_interaction_by_optimization = TRUE,
+                                                            remove_unexpressed_nodes = T,
+                                                            filter_tf_gene_interaction_by_optimization = T,
                                                             CARNIVAL_options = my_options)
+      my_options$timelimit <- seconds_per_step
+      new_row <- list(
+        patient = patient,
+        step = "step_1",
+        end_time = round(Sys.time()-start.time,2)
+      )
+      time_df <- rbind(time_df, new_row)
+      #Stp 2
+      test_result_for <- run_COSMOS_signaling_to_metabolism(data = test_for,
+                                                            CARNIVAL_options = my_options)
+      new_row <- list(
+        patient = patient,
+        step = "step_2",
+        end_time = round(Sys.time()-start.time,2)
+      )
+      time_df <- rbind(time_df, new_row)
       
-      test_back <- preprocess_COSMOS_metabolism_to_signaling(meta_network = meta_network[, c(1, 3, 2)],
+      formatted_res <- format_COSMOS_res(test_result_for)
+      
+      SIF <- formatted_res[[1]]
+      ATT <- formatted_res[[2]]
+      
+      SIF <- SIF[which(SIF$Weight != 0),]
+      
+      RNA_input_df <- data.frame(Nodes = names(RNA_input), t = RNA_input)
+      ATT <- merge(ATT, RNA_input_df, all.x = T)
+      ATT <- ATT[ATT$AvgAct != 0,]
+      
+      
+      # write_csv(SIF, file = paste("../results/",paste(patient, "_SIF.csv",sep = ""), sep = ""))
+      # write_csv(ATT, file = paste("../results/",paste(patient, "_ATT.csv",sep = ""), sep = ""))
+      
+      #Stp 3
+      my_options$timelimit <- seconds_per_step
+      
+      
+      test_back <- preprocess_COSMOS_metabolism_to_signaling(meta_network = meta_network[,c(1,3,2)],
                                                              signaling_data = sig_input,
                                                              metabolic_data = metab_input,
                                                              diff_expression_data = RNA_input,
@@ -201,235 +216,124 @@ for (patient in names(cosmos_inputs)) {
                                                              remove_unexpressed_nodes = TRUE,
                                                              filter_tf_gene_interaction_by_optimization = TRUE,
                                                              CARNIVAL_options = my_options)
-      
-    }, error = function(e) {
-      message("Error handler invoked for patient: ", patient)
-      
       new_row <- list(
         patient = patient,
-        n_sig_input = length(sig_input),
-        f_sig = filter_s,
-        n_metab_input = length(metab_input),
-        f_metab = filter_m
+        step = "step_3",
+        end_time = round(Sys.time()-start.time,2)
       )
+      time_df <- rbind(time_df, new_row)
+      #Stp 4
+      my_options$timelimit <- seconds_per_step
       
-      inputs_metab <<- rbind(inputs_metab, new_row)
+      test_result_back <- run_COSMOS_metabolism_to_signaling(data = test_back,
+                                                             CARNIVAL_options = my_options)
+      new_row <- list(
+        patient = patient,
+        step = "step_4",
+        end_time = round(Sys.time()-start.time,2)
+      )
+      time_df <- rbind(time_df, new_row)
+      formatted_res_back <- format_COSMOS_res(test_result_back)
       
-      # Increment filter_m by 0.1 after catching an error
+      SIF_back <- formatted_res_back[[1]]
+      ATT_back <- formatted_res_back[[2]]
       
+      SIF_back <- SIF_back[which(SIF_back$Weight != 0),]
       
+      ATT_back <- merge(ATT_back, RNA_input_df, all.x = T)
+      ATT_back <- ATT_back[ATT_back$AvgAct != 0,]
+      
+      # write_csv(SIF_back, file = paste("../results/",paste(patient, "_SIF_back.csv",sep = ""), sep = ""))
+      # write_csv(ATT_back, file = paste("../results/",paste(patient, "_ATT_back.csv",sep = ""), sep = ""))
+      
+      #Stp 5: Merge all & save
+      
+      SIF_full <- as.data.frame(rbind(SIF,SIF_back))
+      SIF_full <- unique(SIF_full)
+      
+      ATT_full <- as.data.frame(rbind(ATT,ATT_back))
+      ATT_full <- unique(ATT_full)
+      
+      P_nodes <- ATT_full[ATT_full$NodeType == "P","Nodes"]
+      M_nodes <- ATT_full[ATT_full$NodeType == "M","Nodes"]
+      C_nodes <- union(P_nodes,M_nodes)
+      # C_nodes <- C_nodes[which(C_nodes %in% c(SIF$Node1,SIF$Node2) & C_nodes %in% c(SIF_back$Node1,SIF_back$Node2))]
+      
+      ATT_full <- ATT_full[,-6]
+      
+      ATT_full <- ATT_full %>% group_by(Nodes) %>% summarise_each(funs(mean(., na.rm = TRUE)))
+      ATT_full <- as.data.frame(ATT_full)
+      
+      ATT_full$NodeType <- ifelse(ATT_full$Nodes %in% C_nodes,"C",ifelse(ATT_full$Nodes %in% P_nodes,"P",ifelse(ATT_full$Nodes %in% M_nodes,"M","")))
+      
+      # Automatically create path to save results, so it does not get messy in my folders
+      core_path <- "L:/basic/divg/EXIM/ImmunoHematology/Cathy Magnée/Data/CD3_HDvsCLL/CosmosR"
+      
+      result_path <- paste("/Networks/d", max_depth, sep = "") # Add depth folder
+      dir.create(file.path(core_path, result_path), showWarnings = FALSE)
+      result_path <- paste(result_path, paste("/f", filter, sep = ""), sep = "") # Add filter folder
+      dir.create(file.path(core_path, result_path), showWarnings = FALSE)
+      result_path <- paste(result_path, paste("/", stim_point, sep = ""), sep = "") # Add stim/unstim point folder
+      dir.create(file.path(core_path, result_path), showWarnings = FALSE)
+      result_path <- paste(result_path, "/csvs/", sep = "") # Add csv folder
+      dir.create(file.path(core_path, result_path), showWarnings = FALSE)
+      
+      result_path <- paste(core_path, result_path, sep = "")
+      # result_path <- paste("../results/Network_files_csvs/d", paste(max_depth, paste("/f", paste (filter, paste("/"), paste(stim_point, "/", sep = ""), sep = ""), sep = ""), sep = ""), sep = "")
+      write_csv(SIF_full, file = paste(result_path, paste(patient, "_SIF_full.csv", sep = ""), sep = ""))
+      write_csv(ATT_full, file = paste(result_path, paste(patient, "_ATT_full.csv", sep = ""), sep = ""))
+      
+      # How long did this take?
+      new_row <- list(
+        patient = patient,
+        step = 'final',
+        end_time = round(Sys.time()-start.time,2))
+      time_df <- rbind(time_df, new_row)
+    }, error = function(e) {
       message(paste("Error in processing patient:", patient, "-", e$message))
       skip_to_next <<- TRUE  # Set flag to skip the rest of the iteration
     })
-    
-    if (skip_to_next) {
-      filter_m <- filter_m + 0.1
-      next  # Skip to the next iteration of filter_s if an error occurred
-    }
-    
-    # Check if filter_m has reached the upper limit
-    if (filter_m >= 2.0) {
-      break  # Stop the inner loop if filter_m reaches 2.0 or higher
+    if (skip_to_next){
+      next
     }
   }
 }
-
-```
-
-
-Metabolites:
-Choose which compartment to assign to the metabolic measurements:
-Possible values are "r", "c", "e", "x", "m", "l", "n" and "g". More info here <http://bigg.ucsd.edu/compartments>
-"r", endoplasmic reticulum 
-"c", cytosol 
-"e", extracellular space 
-"x", peroxisome / glyoxysome 
-"m", mitochondria 
-"l", lysosome 
-"n", nucleus 
-"g", golgi apparatus
-
-```{r}
-#Choose which compartment to assign to the metabolic measurments
-metab_input <- prepare_metab_inputs(metab_input, c("c","m"))
-
-```
-For now, we are using c and m as these are the default options. 
-
-Significant inputs:
-```{r}
-# ##Filter significant inputs
-# sig_input <- sig_input[abs(sig_input) > 1.5]
-# metab_input <- metab_input[abs(metab_input) > 1.5]
-```
-The default for this is 2, however I changed it to 1 as there would be only 
-
-## IBM Cplex Options
-
-In the code block below, first the my_options list is created. If you have a Linux OS, this first line is all you need to run. If not: Same. Adjust the options so they fit your requirements. This is the part where you must have the IBM Cplex Solver. It is found through academic license here:
-<https://community.ibm.com/community/user/ai-datascience/blogs/xavier-nodet1/2020/07/09/cplex-free-for-students>
-It is quite a process to get the installation, as you will also need IBMs Download Director (DD) and Java. However, the installer walks you through this quite nicely.
-
-Once you have IBM Cplex solver, adjust the location (though I think it should be similar to mine).
-
-```{r}
-#In order to adapt options to users specification we can load them into a variable 
-#that will then be passed to preprocess_COSMOS_signaling_to_metabolism CARNIVAL_options parameter
-my_options <- default_CARNIVAL_options(solver = "cplex")
-
-#Here the user should provide a path to its CPLEX executable
-
-# my_options$solverPath <- "~/Documents/cplex" #or cbc solver executable
-
-my_options$solverPath <- "C:/Program Files/IBM/ILOG/CPLEX_Studio2211/cplex/bin/x64_win64"
-
-# Change this for your folder. This worked for me, the other options (commented out below) dit not.
-my_options$workdir <- "C:/Users/cmagnee/Documents/cplex"
-my_options$outputFolder <- "C:/Users/cmagnee/Documents/cplex"
-
-# my_options$workdir <- "H:/COSMOS_EXIM/cplex"
-# my_options$outputFolder <- "H:/COSMOS_EXIM/cplex"
-
-# my_options$workdir <- file.path(getwd(), "cplex")
-# my_options$outputFolder <- file.path(getwd(), "cplex")
-
-my_options$solver <- "cplex" #or cbc
-
-# max_depth <- 10
-# 
-# seconds_per_step <- 3600/5
-# my_options$solver <- "cbc"
-my_options$timelimit <- seconds_per_step
-my_options$mipGAP <- 0.05
-
-# amc computer
-my_options$threads <- 18
-
-# laptop
-# my_options$threads <- 6
-```
-
-Note: You need IBM Cplex for this, your location may be different from
-mine. Adjust it accordingly. 
-
-## Step 1: Preprocessing signalling to metabolites
-
-```{r}
-metab_input <- cosmosR:::filter_input_nodes_not_in_pkn(metab_input, meta_network)
-sig_input <- cosmosR:::filter_input_nodes_not_in_pkn(sig_input, meta_network)
-
-```
-
-```{r include = FALSE}
-test_for <- preprocess_COSMOS_signaling_to_metabolism(meta_network = meta_network[,c(1,3,2)],
-                                                      signaling_data = sig_input,
-                                                      metabolic_data = metab_input,
-                                                      diff_expression_data = RNA_input,
-                                                      maximum_network_depth = max_depth,
-                                                      remove_unexpressed_nodes = T,
-                                                      filter_tf_gene_interaction_by_optimization = T,
-                                                      CARNIVAL_options = my_options)
-```
-
-When coming across the checkPertubations error in above chunk, consider increasing the maximum_network_depth.
-
-## Step 2: Running signalling to metabolism 
-
-```{r}
-my_options$timelimit <- seconds_per_step
-
-test_result_for <- run_COSMOS_signaling_to_metabolism(data = test_for,
-                                                      CARNIVAL_options = my_options)
-
-
-formatted_res <- format_COSMOS_res(test_result_for)
-
-SIF <- formatted_res[[1]]
-ATT <- formatted_res[[2]]
-
-SIF <- SIF[which(SIF$Weight != 0),]
-
-RNA_input_df <- data.frame(Nodes = names(RNA_input), t = RNA_input)
-ATT <- merge(ATT, RNA_input_df, all.x = T)
-ATT <- ATT[ATT$AvgAct != 0,]
-
-
-write_csv(SIF, file = paste("../results/",paste(patient, "_SIF.csv",sep = ""), sep = ""))
-write_csv(ATT, file = paste("../results/",paste(patient, "_ATT.csv",sep = ""), sep = ""))
-```
-
-## Step 3: Preprocessing metabolism to signalling
-
-```{r include = FALSE}
-my_options$timelimit <- seconds_per_step
-
-
-test_back <- preprocess_COSMOS_metabolism_to_signaling(meta_network = meta_network[,c(1,3,2)],
-                                                      signaling_data = sig_input,
-                                                      metabolic_data = metab_input,
-                                                      diff_expression_data = RNA_input,
-                                                      maximum_network_depth = max_depth,
-                                                      remove_unexpressed_nodes = TRUE,
-                                                      filter_tf_gene_interaction_by_optimization = TRUE,
-                                                      CARNIVAL_options = my_options)
-
-```
-
-If you come across an error in CheckPerbutations, check if it does work with higher maximum_network_depth (4,5,6...). 
-
-## Step 4: Running metabolism to signalling 
-
-```{r include = FALSE}
-my_options$timelimit <- seconds_per_step
-
-test_result_back <- run_COSMOS_metabolism_to_signaling(data = test_back,
-                                                      CARNIVAL_options = my_options)
-
-formatted_res_back <- format_COSMOS_res(test_result_back)
-
-SIF_back <- formatted_res_back[[1]]
-ATT_back <- formatted_res_back[[2]]
-
-SIF_back <- SIF_back[which(SIF_back$Weight != 0),]
-
-ATT_back <- merge(ATT_back, RNA_input_df, all.x = T)
-ATT_back <- ATT_back[ATT_back$AvgAct != 0,]
-
-write_csv(SIF_back, file = paste("../results/",paste(patient, "_SIF_back.csv",sep = ""), sep = ""))
-write_csv(ATT_back, file = paste("../results/",paste(patient, "_ATT_back.csv",sep = ""), sep = ""))
-```
-
-## Step 5: Combining these datasets
-
-```{r, warning = FALSE}
-SIF_full <- as.data.frame(rbind(SIF,SIF_back))
-SIF_full <- unique(SIF_full)
-
-ATT_full <- as.data.frame(rbind(ATT,ATT_back))
-ATT_full <- unique(ATT_full)
-
-P_nodes <- ATT_full[ATT_full$NodeType == "P","Nodes"]
-M_nodes <- ATT_full[ATT_full$NodeType == "M","Nodes"]
-C_nodes <- union(P_nodes,M_nodes)
-# C_nodes <- C_nodes[which(C_nodes %in% c(SIF$Node1,SIF$Node2) & C_nodes %in% c(SIF_back$Node1,SIF_back$Node2))]
-
-ATT_full <- ATT_full[,-6]
-
-ATT_full <- ATT_full %>% group_by(Nodes) %>% summarise_each(funs(mean(., na.rm = TRUE)))
-ATT_full <- as.data.frame(ATT_full)
-
-ATT_full$NodeType <- ifelse(ATT_full$Nodes %in% C_nodes,"C",ifelse(ATT_full$Nodes %in% P_nodes,"P",ifelse(ATT_full$Nodes %in% M_nodes,"M","")))
-
-```
-
-## Final: Saving results
-
-```{r}
-write_csv(SIF_full, file = paste("../results/d", paste(max_depth, paste(patient, "_SIF_full.csv", sep = ""), sep = ""), sep = ""))
-write_csv(ATT_full, file = paste("../results/d", paste(max_depth, paste(patient, "_ATT_full.csv",sep = ""), sep = ""), sep = ""))
 end.time <- Sys.time()
-time.taken <- round(end.time-start.time, 2)
+time.taken <- round(end.time - start.time, 2)
 time.taken
 ```
 
 
+
+### Optional: Calculating input per filtering input
+
+The chunk below calculates how many signalling inputs and metabolic
+inputs are left after filtering for each patients.
+
+```{r}
+# ## Chunk to check how much data is available per sample
+# cosmos_inputs <- T48_cosmos_inputs # T0 or T48
+# 
+# inputs <- data.frame()
+# 
+# for (patient in names(cosmos_inputs)){
+#   sig_input <- cosmos_inputs[[patient]]$TF_scores
+#   metab_input <- cosmos_inputs[[patient]]$metabolomic
+# 
+#   RNA_input <- cosmos_inputs[[patient]]$RNA
+#   metab_input <- prepare_metab_inputs(metab_input, c("c","m"))
+# 
+#   sig_input <- sig_input[abs(sig_input) > 1.5]
+#   metab_input <- metab_input[abs(metab_input) > 1.0]
+# 
+#   metab_input <- cosmosR:::filter_input_nodes_not_in_pkn(metab_input, meta_network)
+#   sig_input <- cosmosR:::filter_input_nodes_not_in_pkn(sig_input, meta_network)
+#   new_row <- list(
+#     patient = patient,
+#     n_sig_inpul = length(sig_input),
+#     n_metab_input = length(metab_input)
+#   )
+#   inputs <- rbind(inputs, new_row)
+# }
+
+```
