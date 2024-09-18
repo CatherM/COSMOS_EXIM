@@ -189,18 +189,14 @@ Create_Network <- function(ATT, SIF, MergedGroup){
   # Two things: 1: Adding moleculeType column to nodes table; 2: putting shapes to these
   # Step 1 should be done earlier, maybe in 6 - Preprocess_network.Rmd.
   #StringDB Tryout
-  ATT_string_interaction_cmd <- paste('string protein query taxonID=9606 cutoff=0.9 query=', paste(nodes$id, collapse=","),'"',sep="")
+  ATT_string_interaction_cmd <- paste('string protein query taxonID=9606 cutoff=0.99 query=', paste(nodes$id, collapse=","),'"',sep="")
   commandsGET(ATT_string_interaction_cmd )
   string_nodes <- getTableColumns(table = "node", columns = c("display name", "target::family"), network = "STRING network")
   colnames(string_nodes) <- c("id", "moleculeType")
   write.csv(string_nodes, file = paste(data_path, paste(MergedGroup, ".csv", sep = ""), sep = "StringDB_"))
   string_nodes <- merge(nodes, string_nodes, by = "id", all.x = T)
-  
-  nodes$moleculeType <- ifelse(is.na(string_nodes$moleculeType.x), #If x is NA, put in y, if x is not na, put in x. 
-                                     string_nodes$moleculeType.y,  # moleculeType <- , else (in which case, x is not NA)
-                                     string_nodes$moleculeType.x) # moleculeType <- x
-  nodes$moleculeType[is.na(nodes$moleculeType)] <- "Other"
-  print(nodes)
+  nodes <- string_nodes |>
+    mutate(moleculeType = coalesce(moleculeType.x, moleculeType.y, "Other"))
   
   
   closeSession(save.before.closing = F)
@@ -266,9 +262,10 @@ Create_Network <- function(ATT, SIF, MergedGroup){
   # Select nodes that have a high interconnectivity (>10 edges to other nodes)
   createDegreeFilter("ImportantNodes", criterion = c(10,100), network = MergedGroup, apply = T)
   Important_Nodes <- data.frame(getSelectedNodes())
+  Important_Nodes <- na.exclude(Important_Nodes)
   
   # IF there are highly interconnected nodes, safe them and their activity.
-  if(length(Important_Nodes)>1){
+  if(nrow(Important_Nodes)>0){
     Important_df <- merge(Important_Nodes, Merged_ATT_CLL[c(1,5)], by.x = "getSelectedNodes..", by.y = "Nodes", all.x = T)
     names(Important_df) <- c("Nodes", "Act_CLL")
     Important_df <- merge(Important_df, Merged_ATT_HD[c(1,5)], by.x = "Nodes", by.y = "Nodes", all.x = T)
@@ -301,7 +298,7 @@ Below are the variables of the networks you want to visualize.
 
 ```{r}
 max_depth <- 3
-filter <- "s10m05"
+filter <- "s20m07"
 stim_point <- "T0"
 ```
 

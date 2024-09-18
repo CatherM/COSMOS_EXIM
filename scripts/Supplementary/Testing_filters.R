@@ -62,15 +62,15 @@ filter_df <- data.frame(patient = character(),
                         stringsAsFactors = FALSE)
 max_depth <- 4
 
-cosmos_inputs <- T48_cosmos_inputs # T0 or T48
+cosmos_inputs <- T0_cosmos_inputs # T0 or T48
 
 # Check for highest filter_s possible
 for (patient in names(cosmos_inputs)) {
-  filter_s <- 1.9  # Start filter_s 
-  filter_m <- 1.5  # Start filter_m 
+  filter_s <- 2.0  # Start filter_s 
+  filter_m <- 2.0  # Start filter_m 
   
   
-  while (filter_s >= 1.0) {  # Continue while filter_s is valid
+  while (filter_s >= 1.5) {  # Continue while filter_s is valid
     skip_to_next <- FALSE
     
     tryCatch({
@@ -124,9 +124,9 @@ for (patient in names(cosmos_inputs)) {
       # Handle the error by decrementing filter_m
       
       # message(paste("Error in processing patient:", patient, "-", e$message))
-      if (filter_m <= 0.2) {
+      if (filter_m <= 1.3) {
         # Reset filter_m to 2.0 and decrement filter_s
-        filter_m <<- 1.5
+        filter_m <<- 2.0
         filter_s <<- filter_s - 0.1
         
         
@@ -146,8 +146,8 @@ for (patient in names(cosmos_inputs)) {
 }
 # Same but trying to get metabolite values as high as possible
 for (patient in names(cosmos_inputs)) {
-  filter_s <- 1.9  # Start filter_s at 1.8
-  filter_m <- 1.9  # Start filter_m at 1.5
+  filter_s <- 2.0  # Start filter_s at 1.8
+  filter_m <- 2.0  # Start filter_m at 1.5
   
   
   while (filter_m >= 0.5) {  # Continue while filter_m is valid
@@ -204,14 +204,14 @@ for (patient in names(cosmos_inputs)) {
       # Handle the error by decrementing filter_m
       
       # message(paste("Error in processing patient:", patient, "-", e$message))
-      if (filter_s <= 1.0) {
+      if (filter_s <= 1.5) {
         # Reset filter_m to 2.0 and decrement filter_s
-        filter_s <<- 1.9
+        filter_s <<- 2.0
         filter_m <<- filter_m - 0.1
         
         
         # If filter_s also goes below 0.5, break the while loop
-        if (filter_m <= 0.0) {
+        if (filter_m <= 1.5) {
           skip_to_next <<- TRUE
         }
       } else {

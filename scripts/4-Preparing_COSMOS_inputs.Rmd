@@ -140,12 +140,19 @@ T48_transcriptomic <- T48_transcriptomic[,samples]
 To estimate TF activity, regulons are needed. Regulons are the TF and their gene expression targets (so what targets are targeted by the TF). For this, the CollecTRI database is the most recent and recommended by Saezlab. 
 
 ### Regulon loading and cleaning
+Using old (Uncomment chunks below to get latest collectri db)
+```{r}
+load("L:\\basic\\divg\\EXIM\\ImmunoHematology\\Cathy Magnée\\Data\\CD3_HDvsCLL\\CosmosR\\COSMOS_Collectri_db.RData")
+
+```
+
+
 Loading CollecTRI processed regulons from Omnipath
 ```{r, message=FALSE, warning= FALSE}
 # Omnipath settings
-collectri_regulons <- get_collectri(organism = 'human', split_complexes = FALSE)
-collectri_regulons <- decoupleR::get_collectri()
-collectri_regulons <- collectri_regulons[!(is.na(collectri_regulons[, 2]) | collectri_regulons[, 2] == ""), ]
+# collectri_regulons <- get_collectri(organism = 'human', split_complexes = FALSE)
+# collectri_regulons <- decoupleR::get_collectri()
+# collectri_regulons <- collectri_regulons[!(is.na(collectri_regulons[, 2]) | collectri_regulons[, 2] == ""), ]
 ```
 For some reason, using the above df does not work. The one below does, but it needs more preprocessing. Thus, the following two chunks are the importing and preprocessing of these regulons. In the end, we use both datasets.
 
@@ -154,11 +161,11 @@ Same CollecTRI regulons, different route:
 
 # Omnipath settings to get collectri regulons
 
-omnipath_set_cachedir('tmpcache')
-omnipath_set_console_loglevel('trace')
-
-# Getting all regulons
-ci <- collectri() # overview
+# omnipath_set_cachedir('tmpcache')
+# omnipath_set_console_loglevel('trace')
+# 
+# # Getting all regulons
+# ci <- collectri() # overview
 
 ```
 
@@ -169,45 +176,45 @@ The 0's are then later all changed to -1.
 Cleaning up the CollecTRI regulons:
 ```{r, message=FALSE}
 
-ci_regulons <- ci[,c(3,4,6)] # only need these columns from overview. These are source, target and stimulates (0 and 1)
-
-colnames(ci_regulons) <- c("source", "target", "mor")
-ci_regulons <- unique(ci_regulons) # remove pure dupes
-
-# Some of the regulons are duplicated with different mor.
-# This means the same source/target combination has both 0 and 1 options
-# Let's change this.
-temp <- ci[duplicated(ci[, 3:4]) | duplicated(ci[, 3:4], fromLast = TRUE), ] # all duplicates, also with the same mor values
-duplicates <- anti_join(temp, ci[duplicated(ci[, c(3,4,6)]) | duplicated(ci[, c(3,4,6)], fromLast = TRUE), ]) # only different mor values
-duplicates <- duplicates[,c(3,4,6)]
-colnames(duplicates) <- c("source", "target", "mor")
-duplicates <- unique(duplicates)
-
-# For loop that checks the value of the duplicates in ci_regulons what their values are in collectri_regulons then changes accordingly
-for(i in 1:nrow(duplicates)){
-  source <- duplicates$source[i]
-  target <- duplicates$target[i]
-
-  collectri_row <- collectri_regulons %>%
-    filter(source == !!source & target == !!target)
-
-  if (nrow(collectri_row) > 0){ # if it is in collectri
-    # check mor value
-    if (collectri_row$mor == -1){
-      ci_regulons <- ci_regulons |>
-        mutate(mor = ifelse(source == !!source & target == !!target, 0 , mor))
-    } else {
-      ci_regulons <- ci_regulons |>
-        mutate(mor = ifelse(source == !!source & target == !!target, 1, mor))
-    }
-  }
-}
-
-ci_regulons <- unique(ci_regulons)
-
-
-# Change inhibition relation to -1
-ci_regulons$mor[ci_regulons$mor == 0] <- -1
+# ci_regulons <- ci[,c(3,4,6)] # only need these columns from overview. These are source, target and stimulates (0 and 1)
+# 
+# colnames(ci_regulons) <- c("source", "target", "mor")
+# ci_regulons <- unique(ci_regulons) # remove pure dupes
+# 
+# # Some of the regulons are duplicated with different mor.
+# # This means the same source/target combination has both 0 and 1 options
+# # Let's change this.
+# temp <- ci[duplicated(ci[, 3:4]) | duplicated(ci[, 3:4], fromLast = TRUE), ] # all duplicates, also with the same mor values
+# duplicates <- anti_join(temp, ci[duplicated(ci[, c(3,4,6)]) | duplicated(ci[, c(3,4,6)], fromLast = TRUE), ]) # only different mor values
+# duplicates <- duplicates[,c(3,4,6)]
+# colnames(duplicates) <- c("source", "target", "mor")
+# duplicates <- unique(duplicates)
+# 
+# # For loop that checks the value of the duplicates in ci_regulons what their values are in collectri_regulons then changes accordingly
+# for(i in 1:nrow(duplicates)){
+#   source <- duplicates$source[i]
+#   target <- duplicates$target[i]
+# 
+#   collectri_row <- collectri_regulons %>%
+#     filter(source == !!source & target == !!target)
+# 
+#   if (nrow(collectri_row) > 0){ # if it is in collectri
+#     # check mor value
+#     if (collectri_row$mor == -1){
+#       ci_regulons <- ci_regulons |>
+#         mutate(mor = ifelse(source == !!source & target == !!target, 0 , mor))
+#     } else {
+#       ci_regulons <- ci_regulons |>
+#         mutate(mor = ifelse(source == !!source & target == !!target, 1, mor))
+#     }
+#   }
+# }
+# 
+# ci_regulons <- unique(ci_regulons)
+# 
+# 
+# # Change inhibition relation to -1
+# ci_regulons$mor[ci_regulons$mor == 0] <- -1
 
 ```
 

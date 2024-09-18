@@ -96,11 +96,11 @@ my_options$workdir <- "C:/Users/cmagnee/Documents/cplex"
 my_options$outputFolder <- "C:/Users/cmagnee/Documents/cplex"
 my_options$solver <- "cplex"
 my_options$mipGAP <- 0.05
-my_options$poolCap <- 100
-my_options$limitPop <- 500
+my_options$poolCap <- 500
+my_options$limitPop <- 2500
 my_options$threads <- 19 # Adjust based on your machine
 # my_options$threads <- 6 # My laptop
-my_options$timelimit <- 3600  
+
 
 ```
 
@@ -132,15 +132,50 @@ assign to the metabolic measurements: Possible values are "r", "c", "e",
 ```{r}
 
 max_depth <- 3
-seconds_per_step <- 3600
-
+seconds_per_step <- 1 * 3600 / 64 # Time in h * Seconds in an hour / Amount of steps 
+my_options$timelimit <- seconds_per_step  
 time_df <- data.frame()
 
 ```
 
+
+### Optional: Calculating input per filtering input
+
+The chunk below calculates how many signalling inputs and metabolic
+inputs are left after filtering for each patients.
+
+```{r}
+# ## Chunk to check how much data is available per sample
+# inputs <- data.frame()
+# 
+# 
+# cosmos_inputs <- T48_cosmos_inputs # T0 or T48
+# for (patient in names(cosmos_inputs)){
+#   sig_input <- cosmos_inputs[[patient]]$TF_scores
+#   metab_input <- cosmos_inputs[[patient]]$metabolomic
+# 
+#   RNA_input <- cosmos_inputs[[patient]]$RNA
+#   metab_input <- prepare_metab_inputs(metab_input, c("c","m"))
+# 
+#   sig_input <- sig_input[abs(sig_input) > 1.8]
+#   metab_input <- metab_input[abs(metab_input) > 0.7]
+# 
+#   metab_input <- cosmosR:::filter_input_nodes_not_in_pkn(metab_input, meta_network)
+#   sig_input <- cosmosR:::filter_input_nodes_not_in_pkn(sig_input, meta_network)
+#   new_row <- list(
+#     patient = patient,
+#     n_sig_inpul = length(sig_input),
+#     n_metab_input = length(metab_input)
+#   )
+#   inputs <- rbind(inputs, new_row)
+# }
+
+```
+
+# Running
 The chunk below runs cosmos for both timepoints, according to the variables you set in the chunks above. 
 Do not forget to edit the filter accordingly!
-```{r}
+```{r, results='hide'}
 start.time <- Sys.time()
 for (i in 1:2){
   cosmos_inputs <- list(T0_cosmos_inputs, T48_cosmos_inputs)[[i]]
@@ -156,9 +191,9 @@ for (i in 1:2){
       metab_input <- prepare_metab_inputs(metab_input, c("c","m"))
       
       
-      filter <- "s10m05" ## This one is important!! s = signalling input, m = metabolite input filter do not put in the points or smtng
-      sig_input <- sig_input[abs(sig_input) > 1.0] 
-      metab_input <- metab_input[abs(metab_input) > 0.5] 
+      filter <- "s18m07" ## This one is important!! s = signalling input, m = metabolite input filter do not put in the points or smtng
+      sig_input <- sig_input[abs(sig_input) > 1.8] 
+      metab_input <- metab_input[abs(metab_input) > 0.7] 
       
       metab_input <- cosmosR:::filter_input_nodes_not_in_pkn(metab_input, meta_network)
       sig_input <- cosmosR:::filter_input_nodes_not_in_pkn(sig_input, meta_network)
@@ -304,36 +339,3 @@ time.taken
 ```
 
 
-
-### Optional: Calculating input per filtering input
-
-The chunk below calculates how many signalling inputs and metabolic
-inputs are left after filtering for each patients.
-
-```{r}
-# ## Chunk to check how much data is available per sample
-# cosmos_inputs <- T48_cosmos_inputs # T0 or T48
-# 
-# inputs <- data.frame()
-# 
-# for (patient in names(cosmos_inputs)){
-#   sig_input <- cosmos_inputs[[patient]]$TF_scores
-#   metab_input <- cosmos_inputs[[patient]]$metabolomic
-# 
-#   RNA_input <- cosmos_inputs[[patient]]$RNA
-#   metab_input <- prepare_metab_inputs(metab_input, c("c","m"))
-# 
-#   sig_input <- sig_input[abs(sig_input) > 1.5]
-#   metab_input <- metab_input[abs(metab_input) > 1.0]
-# 
-#   metab_input <- cosmosR:::filter_input_nodes_not_in_pkn(metab_input, meta_network)
-#   sig_input <- cosmosR:::filter_input_nodes_not_in_pkn(sig_input, meta_network)
-#   new_row <- list(
-#     patient = patient,
-#     n_sig_inpul = length(sig_input),
-#     n_metab_input = length(metab_input)
-#   )
-#   inputs <- rbind(inputs, new_row)
-# }
-
-```
