@@ -1,5 +1,10 @@
-# Differential Expression Analysis 
+# DE_Analysis.R
+# Differential  Analysis 
 # COSMOS pipeline. Goal: Create mechanistic networks based on CLL and HD LOG2FC values. 
+
+# This document consists of the whole pipeline for creating network in CORMOS, 
+# but utilizes LOG2FC values for both metab and GE for HD vs CLL. 
+# Output: One network for each timepoint.
 
 library(readxl)
 library(readr)
@@ -10,17 +15,20 @@ library(pheatmap)
 library(vsn)
 library(stringr)
 
-############ Paths to data AMC PC ############ 
-### Getting DGE for RNA
-## Gene expression
+# ____________________________________________________________________________________________
+# 1-3 Data preprocessing 
+# ____________________________________________________________________________________________
+
+### Getting DEG for RNA
+# Laptop
 # T0
-T0_DEG_path <- "L:\\basic\\divg\\EXIM\\ImmunoHematology\\Cathy Magnée\\Data\\CD3_HDvsCLL\\Transcriptomic\\EC024_output_data_T0.RData"
+T0_DEG_path <- "C:\\Users\\Cathy.LAPTOP-SDFOSKVI\\Documents\\School_files\\SysBio_RP\\COSMOS_EXIM\\ourdata\\transcriptomic\\T0_DEG.csv"
 load(T0_DEG_path)
 write.csv(DEG_df,file = "L:\\basic\\divg\\EXIM\\ImmunoHematology\\Cathy Magnée\\Data\\CD3_HDvsCLL\\Transcriptomic\\T0_DEG.csv")
 
 # T48
 rm(list = ls())
-T48_DEG_path <- "L:\\basic\\divg\\EXIM\\ImmunoHematology\\Cathy Magnée\\Data\\CD3_HDvsCLL\\Transcriptomic\\EC024_output_data_T48.RData"
+T48_DEG_path <- "C:\\Users\\Cathy.LAPTOP-SDFOSKVI\\Documents\\School_files\\SysBio_RP\\COSMOS_EXIM\\ourdata\\transcriptomic\\T48_DEG.csv"
 
 load(T48_DEG_path)
 write.csv(DEG_df,file = "L:\\basic\\divg\\EXIM\\ImmunoHematology\\Cathy Magnée\\Data\\CD3_HDvsCLL\\Transcriptomic\\T48_DEG.csv")
@@ -29,17 +37,36 @@ write.csv(DEG_df,file = "L:\\basic\\divg\\EXIM\\ImmunoHematology\\Cathy Magnée\
 ###
 rm(list = ls())
 
-########################################## paths frfr for both RNA and metabs
+# AMC
+## Gene expression
+# # T0
+# T0_DEG_path <- "L:\\basic\\divg\\EXIM\\ImmunoHematology\\Cathy Magnée\\Data\\CD3_HDvsCLL\\Transcriptomic\\EC024_output_data_T0.RData"
+# load(T0_DEG_path)
+# write.csv(DEG_df,file = "L:\\basic\\divg\\EXIM\\ImmunoHematology\\Cathy Magnée\\Data\\CD3_HDvsCLL\\Transcriptomic\\T0_DEG.csv")
+# 
+# # T48
+# rm(list = ls())
+# T48_DEG_path <- "L:\\basic\\divg\\EXIM\\ImmunoHematology\\Cathy Magnée\\Data\\CD3_HDvsCLL\\Transcriptomic\\EC024_output_data_T48.RData"
+# 
+# load(T48_DEG_path)
+# write.csv(DEG_df,file = "L:\\basic\\divg\\EXIM\\ImmunoHematology\\Cathy Magnée\\Data\\CD3_HDvsCLL\\Transcriptomic\\T48_DEG.csv")
+# 
+# 
+# ###
+# rm(list = ls())
 
-T0_DEG_path <- "L:\\basic\\divg\\EXIM\\ImmunoHematology\\Cathy Magnée\\Data\\CD3_HDvsCLL\\Transcriptomic\\T0_DEG.csv"
-T48_DEG_path <- "L:\\basic\\divg\\EXIM\\ImmunoHematology\\Cathy Magnée\\Data\\CD3_HDvsCLL\\Transcriptomic\\T48_DEG.csv"
+########################################## paths DA for Gene Expression and metabs
+# #AMC
+# T0_DEG_path <- "L:\\basic\\divg\\EXIM\\ImmunoHematology\\Cathy Magnée\\Data\\CD3_HDvsCLL\\Transcriptomic\\T0_DEG.csv"
+# T48_DEG_path <- "L:\\basic\\divg\\EXIM\\ImmunoHematology\\Cathy Magnée\\Data\\CD3_HDvsCLL\\Transcriptomic\\T48_DEG.csv"
+
+# Laptop
+T0_metab_path <- "C:\\Users\\Cathy.LAPTOP-SDFOSKVI\\Documents\\School_files\\SysBio_RP\\COSMOS_EXIM\\ourdata\\metabolomic\\T0_Statistical_Data.xlsx"
+T48_metab_path <- "C:\\Users\\Cathy.LAPTOP-SDFOSKVI\\Documents\\School_files\\SysBio_RP\\COSMOS_EXIM\\ourdata\\metabolomic\\T48_Statistical_Data.xlsx"
 
 ## Metabolites
 T0_metab_path <- "L:\\basic\\divg\\EXIM\\ImmunoHematology\\Cathy Magnée\\Data\\CD3_HDvsCLL\\Metabolomic\\T0_Statistical_Data.xlsx"
 T48_metab_path <- "L:\\basic\\divg\\EXIM\\ImmunoHematology\\Cathy Magnée\\Data\\CD3_HDvsCLL\\Metabolomic\\T48_Statistical_Data.xlsx"
-
-metabolite_matching <- as.data.frame(read_excel("L:/basic/divg/EXIM/ImmunoHematology/Cathy Magnée/Data/CD3_HDvsCLL/Metabolomic/Statistical Data_Incl_HMDB.xlsx"))
-
 
 ########################################## Data exploration - RNA
 T0_DEG <- as.data.frame(read_csv(T0_DEG_path))
@@ -72,7 +99,7 @@ hist(as.numeric(unlist(T48_DA_metab$Log2_fold_change)), breaks = 121)
 # Lets infer tf activity from this?
 
 # ____________________________________________________________________________________________
-# 4 - Preparing COSMOS inputs
+# 4 - Preparing COSMOS inputs + Estimating TF activitites
 # ____________________________________________________________________________________________
 
 
@@ -180,9 +207,9 @@ T48_TF_activities <- apply(RNA_scaled,2,function(x){
   return(as_input)
 })  
 
-# ____________________________________________________________________________________________
+# ____________________________________________________________
 # Prep data for Cosmos_Inputs
-# ____________________________________________________________________________________________
+# ____________________________________________________________
 
 T0_transcriptomic <- T0_DEG[!(is.na(T0_DEG$GENE)), ]
 row.names(T0_transcriptomic) <- T0_transcriptomic$GENE
@@ -225,9 +252,9 @@ T48_TF_activities <- apply(T48_TF_activities, 2, function(x){
   x <- x[which(!is.na(x))]
   return(x)
 },simplify = F)
-# ____________________________________________________________________________________________
+# ______________________________________________________________________
 # Create Cosmos_Inputs
-# ____________________________________________________________________________________________
+# ______________________________________________________________________
 
 TF_activities <- T0_TF_activities
 RNA_scaled <- T0_transcriptomic
@@ -260,7 +287,7 @@ save(T48_cosmos_inputs, file = "L:\\basic\\divg\\EXIM\\ImmunoHematology\\Cathy M
 
 
 # ____________________________________________________________________________________________
-# Run COSMOS
+# 5 - Run COSMOS
 # ____________________________________________________________________________________________
 
 # Meta stuff
