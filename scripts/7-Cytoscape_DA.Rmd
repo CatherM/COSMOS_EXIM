@@ -175,57 +175,57 @@ min_filter_function <- function(Merged_ATT) {
 Function 3: Create networks in cytoscape:
 AMC locations
 ```{r}
-# T0_DEG_path <- "L:\\basic\\divg\\EXIM\\ImmunoHematology\\Cathy Magnée\\Data\\CD3_HDvsCLL\\Transcriptomic\\T0_DEG.csv"
-# T48_DEG_path <- "L:\\basic\\divg\\EXIM\\ImmunoHematology\\Cathy Magnée\\Data\\CD3_HDvsCLL\\Transcriptomic\\T48_DEG.csv"
-# 
-# ## Metabolites
-# T0_metab_path <- "L:\\basic\\divg\\EXIM\\ImmunoHematology\\Cathy Magnée\\Data\\CD3_HDvsCLL\\Metabolomic\\T0_Statistical_Data.xlsx"
-# T48_metab_path <- "L:\\basic\\divg\\EXIM\\ImmunoHematology\\Cathy Magnée\\Data\\CD3_HDvsCLL\\Metabolomic\\T48_Statistical_Data.xlsx"
-# 
-# ########################################## Data exploration - RNA
-# T0_DEG <- as.data.frame(read_csv(T0_DEG_path))
-# 
-# T0_DEG <- T0_DEG[, (colnames(T0_DEG) %in% c("GENE", "log2FoldChange"))]
-# 
-# T48_DEG <- as.data.frame(read_csv(T48_DEG_path))
-# 
-# T48_DEG <- T48_DEG[, (colnames(T48_DEG) %in% c("GENE", "log2FoldChange"))]
-
-######################################## Data exploration - metab
-# T0_DA_metab <- as.data.frame(read_excel(T0_metab_path))
-# T48_DA_metab <- as.data.frame(read_excel(T48_metab_path))
-# 
-# T0_DA_metab <- T0_DA_metab[, (colnames(T0_DA_metab) %in% c("HMDB.id", "Log2_fold_change"))]
-# T48_DA_metab <- T48_DA_metab[, (colnames(T48_DA_metab) %in% c("HMDB.id", "Log2_fold_change"))]
-
-```
-
-Laptop locations:
-```{r}
-T0_DEG_path <- "C:\\Users\\Cathy.LAPTOP-SDFOSKVI\\Documents\\School_files\\SysBio_RP\\COSMOS_EXIM\\ourdata\\transcriptomic\\T0_DEG.csv"
-T48_DEG_path <- "C:\\Users\\Cathy.LAPTOP-SDFOSKVI\\Documents\\School_files\\SysBio_RP\\COSMOS_EXIM\\ourdata\\transcriptomic\\T48_DEG.csv"
+T0_DEG_path <- "L:\\basic\\divg\\EXIM\\ImmunoHematology\\Cathy Magnée\\Data\\CD3_HDvsCLL\\Transcriptomic\\T0_DEG.csv"
+T48_DEG_path <- "L:\\basic\\divg\\EXIM\\ImmunoHematology\\Cathy Magnée\\Data\\CD3_HDvsCLL\\Transcriptomic\\T48_DEG.csv"
 
 ## Metabolites
-T0_metab_path <- "C:\\Users\\Cathy.LAPTOP-SDFOSKVI\\Documents\\School_files\\SysBio_RP\\COSMOS_EXIM\\ourdata\\metabolomic\\T0_Statistical_Data.xlsx"
-T48_metab_path <- "C:\\Users\\Cathy.LAPTOP-SDFOSKVI\\Documents\\School_files\\SysBio_RP\\COSMOS_EXIM\\ourdata\\metabolomic\\T48_Statistical_Data.xlsx"
+T0_metab_path <- "L:\\basic\\divg\\EXIM\\ImmunoHematology\\Cathy Magnée\\Data\\CD3_HDvsCLL\\Metabolomic\\T0_Statistical_Data.xlsx"
+T48_metab_path <- "L:\\basic\\divg\\EXIM\\ImmunoHematology\\Cathy Magnée\\Data\\CD3_HDvsCLL\\Metabolomic\\T48_Statistical_Data.xlsx"
 
 ########################################## Data exploration - RNA
 T0_DEG <- as.data.frame(read_csv(T0_DEG_path))
 
 T0_DEG <- T0_DEG[, (colnames(T0_DEG) %in% c("GENE", "log2FoldChange"))]
 
-# T48_DEG <- as.data.frame(read_csv(T48_DEG_path))
+T48_DEG <- as.data.frame(read_csv(T48_DEG_path))
 
-# T48_DEG <- T48_DEG[, (colnames(T48_DEG) %in% c("GENE", "log2FoldChange"))]
+T48_DEG <- T48_DEG[, (colnames(T48_DEG) %in% c("GENE", "log2FoldChange"))]
 
-######################################## Data exploration - metab
+####################################### Data exploration - metab
 T0_DA_metab <- as.data.frame(read_excel(T0_metab_path))
+T48_DA_metab <- as.data.frame(read_excel(T48_metab_path))
 
 T0_DA_metab <- T0_DA_metab[, (colnames(T0_DA_metab) %in% c("HMDB.name", "Log2_fold_change"))]
+T48_DA_metab <- T48_DA_metab[, (colnames(T48_DA_metab) %in% c("HMDB.name", "Log2_fold_change"))]
 
-# T48_DA_metab <- as.data.frame(read_excel(T48_metab_path))
+```
 
-# T48_DA_metab <- T48_DA_metab[, (colnames(T48_DA_metab) %in% c("HMDB.id", "Log2_fold_change"))]
+Laptop locations:
+```{r}
+# T0_DEG_path <- "C:\\Users\\Cathy.LAPTOP-SDFOSKVI\\Documents\\School_files\\SysBio_RP\\COSMOS_EXIM\\ourdata\\transcriptomic\\T0_DEG.csv"
+# T48_DEG_path <- "C:\\Users\\Cathy.LAPTOP-SDFOSKVI\\Documents\\School_files\\SysBio_RP\\COSMOS_EXIM\\ourdata\\transcriptomic\\T48_DEG.csv"
+# 
+# ## Metabolites
+# T0_metab_path <- "C:\\Users\\Cathy.LAPTOP-SDFOSKVI\\Documents\\School_files\\SysBio_RP\\COSMOS_EXIM\\ourdata\\metabolomic\\T0_Statistical_Data.xlsx"
+# T48_metab_path <- "C:\\Users\\Cathy.LAPTOP-SDFOSKVI\\Documents\\School_files\\SysBio_RP\\COSMOS_EXIM\\ourdata\\metabolomic\\T48_Statistical_Data.xlsx"
+# 
+# ########################################## Data exploration - RNA
+# T0_DEG <- as.data.frame(read_csv(T0_DEG_path))
+# 
+# T0_DEG <- T0_DEG[, (colnames(T0_DEG) %in% c("GENE", "log2FoldChange"))]
+# 
+# # T48_DEG <- as.data.frame(read_csv(T48_DEG_path))
+# 
+# # T48_DEG <- T48_DEG[, (colnames(T48_DEG) %in% c("GENE", "log2FoldChange"))]
+# 
+# ######################################## Data exploration - metab
+# T0_DA_metab <- as.data.frame(read_excel(T0_metab_path))
+# 
+# T0_DA_metab <- T0_DA_metab[, (colnames(T0_DA_metab) %in% c("HMDB.name", "Log2_fold_change"))]
+# 
+# # T48_DA_metab <- as.data.frame(read_excel(T48_metab_path))
+# 
+# # T48_DA_metab <- T48_DA_metab[, (colnames(T48_DA_metab) %in% c("HMDB.id", "Log2_fold_change"))]
 
 ```
 
@@ -267,7 +267,7 @@ Create_Network <- function(ATT, SIF, MergedGroup){
   string_nodes <- merge(nodes, string_nodes, by = "id", all.x = T)
   nodes <- string_nodes |>
     mutate(moleculeType = coalesce(moleculeType.x, moleculeType.y, "Other"))
-  
+
   
   closeSession(save.before.closing = F)
 
@@ -368,7 +368,7 @@ Below are the variables of the networks you want to visualize.
 
 ```{r}
 max_depth <- 3
-filter <- "s20m07"
+filter <- "s10m05"
 stim_point <- "T0"
 ```
 
@@ -376,20 +376,20 @@ stim_point <- "T0"
 
 Below is the data path of my AMC pc.
 ```{r}
-# core_path <- "L:/basic/divg/EXIM/ImmunoHematology/Cathy Magnée/Data/CD3_HDvsCLL/CosmosR"
-# result_path <- paste("/Networks/d", max_depth, sep = "") # Add depth folder
-# result_path <- paste(result_path, paste("/f", filter, sep = ""), sep = "") # Add filter folder
-# result_path <- paste(result_path, paste("/", stim_point, sep = ""), sep = "") # Add stim/unstim point folder
-# result_path <- paste(result_path, "/csvs/", sep = "") # Add csv folder
-# data_path <- paste(core_path, result_path, sep = "")
+core_path <- "L:/basic/divg/EXIM/ImmunoHematology/Cathy Magnée/Data/CD3_HDvsCLL/CosmosR"
+result_path <- paste("/Networks/d", max_depth, sep = "") # Add depth folder
+result_path <- paste(result_path, paste("/f", filter, sep = ""), sep = "") # Add filter folder
+result_path <- paste(result_path, paste("/", stim_point, sep = ""), sep = "") # Add stim/unstim point folder
+result_path <- paste(result_path, "/csvs/", sep = "") # Add csv folder
+data_path <- paste(core_path, result_path, sep = "")
 ```
 
 And my laptop:
 
 ```{r}
-data_path <- "C:/Users/Cathy.LAPTOP-SDFOSKVI/Documents/School_files/SysBio_RP/COSMOS_EXIM/ourdata/cosmos/"
-# result_path <- paste("/d", max_depth, sep = "") # Add depth folder
-# data_path <- paste(core_path, result_path, sep = "")
+# data_path <- "C:/Users/Cathy.LAPTOP-SDFOSKVI/Documents/School_files/SysBio_RP/COSMOS_EXIM/ourdata/cosmos/"
+# # result_path <- paste("/d", max_depth, sep = "") # Add depth folder
+# # data_path <- paste(core_path, result_path, sep = "")
 ```
 
 Adjust this accordingly to your device and placement of files.
@@ -436,8 +436,8 @@ Merged_SIF_CLL <- result$Merged_SIF
 
 # HD
 # result <- filter_merged_files(Merged_ATT_HD, Merged_SIF_HD, majority_filter_function)
-# result <- filter_merged_files(Merged_ATT_HD, Merged_SIF_HD, minus_filter_function)
-result <- filter_merged_files(Merged_ATT_HD, Merged_SIF_HD, max_filter_function)
+result <- filter_merged_files(Merged_ATT_HD, Merged_SIF_HD, minus_filter_function)
+# result <- filter_merged_files(Merged_ATT_HD, Merged_SIF_HD, max_filter_function)
 # result <- filter_merged_files(Merged_ATT_HD, Merged_SIF_HD, min_filter_function)
 
 Filtered_Merged_ATT_HD <- result$Filtered_Merged_ATT

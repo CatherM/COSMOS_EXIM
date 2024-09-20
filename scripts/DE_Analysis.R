@@ -14,6 +14,8 @@ library(reshape2)
 library(pheatmap)
 library(vsn)
 library(stringr)
+library(cosmosR)
+
 
 # ____________________________________________________________________________________________
 # 1-3 Data preprocessing 
@@ -22,20 +24,20 @@ library(stringr)
 ### Getting DEG for RNA
 # Laptop
 # T0
-T0_DEG_path <- "C:\\Users\\Cathy.LAPTOP-SDFOSKVI\\Documents\\School_files\\SysBio_RP\\COSMOS_EXIM\\ourdata\\transcriptomic\\T0_DEG.csv"
-load(T0_DEG_path)
-write.csv(DEG_df,file = "L:\\basic\\divg\\EXIM\\ImmunoHematology\\Cathy Magnée\\Data\\CD3_HDvsCLL\\Transcriptomic\\T0_DEG.csv")
-
-# T48
-rm(list = ls())
-T48_DEG_path <- "C:\\Users\\Cathy.LAPTOP-SDFOSKVI\\Documents\\School_files\\SysBio_RP\\COSMOS_EXIM\\ourdata\\transcriptomic\\T48_DEG.csv"
-
-load(T48_DEG_path)
-write.csv(DEG_df,file = "L:\\basic\\divg\\EXIM\\ImmunoHematology\\Cathy Magnée\\Data\\CD3_HDvsCLL\\Transcriptomic\\T48_DEG.csv")
-
-
-###
-rm(list = ls())
+# T0_DEG_path <- "C:\\Users\\Cathy.LAPTOP-SDFOSKVI\\Documents\\School_files\\SysBio_RP\\COSMOS_EXIM\\ourdata\\transcriptomic\\T0_DEG.csv"
+# load(T0_DEG_path)
+# write.csv(DEG_df,file = "L:\\basic\\divg\\EXIM\\ImmunoHematology\\Cathy Magnée\\Data\\CD3_HDvsCLL\\Transcriptomic\\T0_DEG.csv")
+# 
+# # T48
+# rm(list = ls())
+# T48_DEG_path <- "C:\\Users\\Cathy.LAPTOP-SDFOSKVI\\Documents\\School_files\\SysBio_RP\\COSMOS_EXIM\\ourdata\\transcriptomic\\T48_DEG.csv"
+# 
+# load(T48_DEG_path)
+# write.csv(DEG_df,file = "L:\\basic\\divg\\EXIM\\ImmunoHematology\\Cathy Magnée\\Data\\CD3_HDvsCLL\\Transcriptomic\\T48_DEG.csv")
+# 
+# 
+# ###
+# rm(list = ls())
 
 # AMC
 ## Gene expression
@@ -57,42 +59,51 @@ rm(list = ls())
 
 ########################################## paths DA for Gene Expression and metabs
 # #AMC
-# T0_DEG_path <- "L:\\basic\\divg\\EXIM\\ImmunoHematology\\Cathy Magnée\\Data\\CD3_HDvsCLL\\Transcriptomic\\T0_DEG.csv"
-# T48_DEG_path <- "L:\\basic\\divg\\EXIM\\ImmunoHematology\\Cathy Magnée\\Data\\CD3_HDvsCLL\\Transcriptomic\\T48_DEG.csv"
-
-# Laptop
-T0_metab_path <- "C:\\Users\\Cathy.LAPTOP-SDFOSKVI\\Documents\\School_files\\SysBio_RP\\COSMOS_EXIM\\ourdata\\metabolomic\\T0_Statistical_Data.xlsx"
-T48_metab_path <- "C:\\Users\\Cathy.LAPTOP-SDFOSKVI\\Documents\\School_files\\SysBio_RP\\COSMOS_EXIM\\ourdata\\metabolomic\\T48_Statistical_Data.xlsx"
-
-## Metabolites
+T0_DEG_path <- "L:\\basic\\divg\\EXIM\\ImmunoHematology\\Cathy Magnée\\Data\\CD3_HDvsCLL\\Transcriptomic\\T0_DEG.csv"
+T48_DEG_path <- "L:\\basic\\divg\\EXIM\\ImmunoHematology\\Cathy Magnée\\Data\\CD3_HDvsCLL\\Transcriptomic\\T48_DEG.csv"
+# ## Metabolites
 T0_metab_path <- "L:\\basic\\divg\\EXIM\\ImmunoHematology\\Cathy Magnée\\Data\\CD3_HDvsCLL\\Metabolomic\\T0_Statistical_Data.xlsx"
 T48_metab_path <- "L:\\basic\\divg\\EXIM\\ImmunoHematology\\Cathy Magnée\\Data\\CD3_HDvsCLL\\Metabolomic\\T48_Statistical_Data.xlsx"
 
+# Laptop
+# T0_metab_path <- "C:\\Users\\Cathy.LAPTOP-SDFOSKVI\\Documents\\School_files\\SysBio_RP\\COSMOS_EXIM\\ourdata\\metabolomic\\T0_Statistical_Data.xlsx"
+# T48_metab_path <- "C:\\Users\\Cathy.LAPTOP-SDFOSKVI\\Documents\\School_files\\SysBio_RP\\COSMOS_EXIM\\ourdata\\metabolomic\\T48_Statistical_Data.xlsx"
+# 
+
+
 ########################################## Data exploration - RNA
 T0_DEG <- as.data.frame(read_csv(T0_DEG_path))
+# T0_DEG <- T0_DEG |>
+#   filter(pvalue < 0.5)
 
 T0_DEG <- T0_DEG[, (colnames(T0_DEG) %in% c("GENE", "log2FoldChange"))]
 
 T48_DEG <- as.data.frame(read_csv(T48_DEG_path))
+# T48_DEG <- T48_DEG |>
+#   filter(padj < 0.2)
 
 T48_DEG <- T48_DEG[, (colnames(T48_DEG) %in% c("GENE", "log2FoldChange"))]
 
-hist(as.numeric(unlist(T0_DEG$log2FoldChange)), breaks = 18130)
-hist(as.numeric(unlist(T48_DEG$log2FoldChange)), breaks = 17057)
-
-hist(as.numeric(unlist(T0_DEG$log2FoldChange)), breaks = 18130, xlim = c(-3,3))
-hist(as.numeric(unlist(T48_DEG$log2FoldChange)), breaks = 17057, xlim = c(-3,3))
+# hist(as.numeric(unlist(T0_DEG$log2FoldChange)), breaks = 100)
+# hist(as.numeric(unlist(T48_DEG$log2FoldChange)), breaks = 100)
+# 
+# hist(as.numeric(unlist(T0_DEG$log2FoldChange)), breaks = 100, xlim = c(-3,3))
+# hist(as.numeric(unlist(T48_DEG$log2FoldChange)), breaks = 100, xlim = c(-3,3))
 
 
 ########################################## Data exploration - metab
 T0_DA_metab <- as.data.frame(read_excel(T0_metab_path))
 T48_DA_metab <- as.data.frame(read_excel(T48_metab_path))
+T0_DA_metab <- T0_DA_metab |>
+  filter(P_Value < 0.05)
+T48_DA_metab <- T48_DA_metab |>
+  filter(P_Value < 0.05)
 
 T0_DA_metab <- T0_DA_metab[, (colnames(T0_DA_metab) %in% c("HMDB.id", "Log2_fold_change"))]
 T48_DA_metab <- T48_DA_metab[, (colnames(T48_DA_metab) %in% c("HMDB.id", "Log2_fold_change"))]
 
-hist(as.numeric(unlist(T0_DA_metab$Log2_fold_change)), breaks = 119)
-hist(as.numeric(unlist(T48_DA_metab$Log2_fold_change)), breaks = 121)
+# hist(as.numeric(unlist(T0_DA_metab$Log2_fold_change)), breaks = 119)
+# hist(as.numeric(unlist(T48_DA_metab$Log2_fold_change)), breaks = 121)
 
 ########################### Explanation
 # Now we have, for both T0 and T48, the differential analysis for gene expression and metabolites 
@@ -300,12 +311,12 @@ my_options$workdir <- "C:/Users/cmagnee/Documents/cplex"
 my_options$outputFolder <- "C:/Users/cmagnee/Documents/cplex"
 my_options$solver <- "cplex"
 my_options$mipGAP <- 0.05
-my_options$poolCap <- 500
-my_options$limitPop <- 2500
+my_options$poolCap <- 100
+my_options$limitPop <- 500
 my_options$threads <- 19 # Adjust based on your machine
 # my_options$threads <- 6 # My laptop
 
-max_depth <- 3
+max_depth <- 8
 seconds_per_step <- 1 * 3600 / 64 # Time in h * Seconds in an hour / Amount of steps 
 my_options$timelimit <- seconds_per_step  
 time_df <- data.frame()
@@ -321,9 +332,9 @@ for (patient in names(cosmos_inputs)){
 
   RNA_input <- cosmos_inputs[[patient]]$RNA
   metab_input <- prepare_metab_inputs(metab_input, c("c","m"))
-
-  sig_input <- sig_input[abs(sig_input) > 3.5]
-  metab_input <- metab_input[abs(metab_input) > 0.7]
+  
+  sig_input <- sig_input[abs(sig_input) > 1.7]
+  # metab_input <- metab_input[abs(metab_input) > 0.7]
 
   metab_input <- cosmosR:::filter_input_nodes_not_in_pkn(metab_input, meta_network)
   sig_input <- cosmosR:::filter_input_nodes_not_in_pkn(sig_input, meta_network)
@@ -336,7 +347,7 @@ for (patient in names(cosmos_inputs)){
 }
   
 start.time <- Sys.time()
-for (i in 2:2){
+for (i in 1:2){
   cosmos_inputs <- list(T0_cosmos_inputs, T48_cosmos_inputs)[[i]]
   stim_point <- list("T0", "T48")[[i]]
   for (patient in names(cosmos_inputs)){
@@ -351,13 +362,19 @@ for (i in 2:2){
       
       
       filter <- "s2m2" ## This one is important!! s = signalling input, m = metabolite input filter do not put in the points or smtng
-      sig_input <- sig_input[abs(sig_input) > 3.5] 
-      metab_input <- metab_input[abs(metab_input) > 0.7] 
+      sig_input <- sig_input[abs(sig_input) > 1.7]
+      # if (stim_point == "T48"){
+        # sig_input <- sig_input[abs(sig_input) > 2.0] 
+      # } else {
+        # sig_input <- sig_input[abs(sig_input) > 0.5] 
+      # }
+      # metab_input <- metab_input[abs(metab_input) > 0.7] 
       
       metab_input <- cosmosR:::filter_input_nodes_not_in_pkn(metab_input, meta_network)
       sig_input <- cosmosR:::filter_input_nodes_not_in_pkn(sig_input, meta_network)
       
       # Stp 1
+      my_options$timelimit <- 7200
       test_for <- preprocess_COSMOS_signaling_to_metabolism(meta_network = meta_network[,c(1,3,2)],
                                                             signaling_data = sig_input,
                                                             metabolic_data = metab_input,
@@ -366,7 +383,7 @@ for (i in 2:2){
                                                             remove_unexpressed_nodes = T,
                                                             filter_tf_gene_interaction_by_optimization = T,
                                                             CARNIVAL_options = my_options)
-      my_options$timelimit <- seconds_per_step
+      # my_options$timelimit <- seconds_per_step
       new_row <- list(
         patient = patient,
         step = "step_1",
@@ -399,9 +416,9 @@ for (i in 2:2){
       # write_csv(ATT, file = paste("../results/",paste(patient, "_ATT.csv",sep = ""), sep = ""))
       
       #Stp 3
-      my_options$timelimit <- seconds_per_step
+      # my_options$timelimit <- seconds_per_step
       
-      
+      my_options$timelimit <- 21800
       test_back <- preprocess_COSMOS_metabolism_to_signaling(meta_network = meta_network[,c(1,3,2)],
                                                              signaling_data = sig_input,
                                                              metabolic_data = metab_input,
@@ -417,7 +434,7 @@ for (i in 2:2){
       )
       time_df <- rbind(time_df, new_row)
       #Stp 4
-      my_options$timelimit <- seconds_per_step
+      # my_options$timelimit <- seconds_per_step
       
       test_result_back <- run_COSMOS_metabolism_to_signaling(data = test_back,
                                                              CARNIVAL_options = my_options)
@@ -479,7 +496,7 @@ for (i in 2:2){
       
       # How long did this take?
       new_row <- list(
-        patient = patient,
+        patient = stim_point,
         step = 'final',
         end_time = round(Sys.time()-start.time,2))
       time_df <- rbind(time_df, new_row)
@@ -501,7 +518,7 @@ time.taken
 # 6 - Preprocess network
 # ____________________________________________________________________________________________
 
-for (i in 2:2){
+for (i in 1:2){
   stim_point <- list("T0", "T48")[[i]]
   # Path to where the data should be at AMC pc:
   core_path <- "L:/basic/divg/EXIM/ImmunoHematology/Cathy Magnée/Data/CD3_HDvsCLL/CosmosR"
@@ -575,27 +592,7 @@ for (i in 2:2){
       filter(Node1 != Node2) |> # First removing nodes that are re-activating themselves
       group_by(Node1, Sign, Node2) |>
       summarize(Weight = sum(Weight), .groups='drop')
-    
-    # Remove _c and _m from Node names (metabolites). But write down in NodeType # Cancelled because it gives information about cell system.
-    # ATT$NodeType <- ifelse(grepl("_c$", ATT$Nodes) & is.na(ATT$NodeType), "C", ATT$NodeType)
-    # ATT$NodeType <- ifelse(grepl("_m$", ATT$Nodes), "M", ATT$NodeType)
-    # 
-    # SIF$Node1 <- sub("_m", "", SIF$Node1)
-    # SIF$Node2 <- sub("_m", "", SIF$Node2)
-    # ATT$Nodes<- sub("_m", "", ATT$Nodes)
-    # 
-    # SIF$Node1 <- sub("_c", "", SIF$Node1)
-    # SIF$Node2 <- sub("_c", "", SIF$Node2)
-    # ATT$Nodes<- sub("_c", "", ATT$Nodes)
-    
-    # # Add additional column "Acticity_ (patient network name)". This will make network processing within cytoscape easier.
-    # temp <- paste("Activity_", patient, "")
-    # ATT[temp] <- ATT$Activity
-    # 
-    # # Add additional column "In_(patient network name)". This will make network processing within cytoscape easier.
-    # temp <- paste("In_", patient,sep = "")
-    # ATT[temp] <- 1
-    
+   
     # Saving processed csvs
     # result_path <- paste("/processed_results/d", max_depth, sep = "") # Laptop only
     data_path <- paste(core_path, result_path, sep = "") # Laptop only
@@ -613,6 +610,7 @@ for (i in 2:2){
 
 style.name = "empty"
 Create_Network <- function(ATT, SIF, MergedGroup){
+  
   # Translate this to Node Table and Edges Table for in Cytoscape
   nodes <- data.frame(id = ATT$Nodes,
                       Activity = ATT$Activity,
@@ -629,7 +627,7 @@ Create_Network <- function(ATT, SIF, MergedGroup){
   # Step 1 should be done earlier, maybe in 6 - Preprocess_network.Rmd.
   #StringDB Tryout
   ATT_string_interaction_cmd <- paste('string protein query taxonID=9606 cutoff=0.99 query=', paste(nodes$id, collapse=","),'"',sep="")
-  commandsGET(ATT_string_interaction_cmd )
+  commandsGET(ATT_string_interaction_cmd)
   string_nodes <- getTableColumns(table = "node", columns = c("display name", "target::family"), network = "STRING network")
   colnames(string_nodes) <- c("id", "moleculeType")
   write.csv(string_nodes, file = paste(data_path, paste(MergedGroup, ".csv", sep = ""), sep = "StringDB_"))
@@ -639,10 +637,16 @@ Create_Network <- function(ATT, SIF, MergedGroup){
   nodes$moleculeType.x <- NULL
   nodes$moleculeType.y <- NULL
   
-  # closeSession(save.before.closing = F)
+  closeSession(save.before.closing = F)
   
+  edges <- edges |>
+    filter(source %in% nodes$id) |>
+    filter(target %in% nodes$id)
+  # if (nrow(edges) > 200){
+  #   edges <- edges[c(1:200),]
+  # }
   
-  createNetworkFromDataFrames(nodes, edges, title = MergedGroup, collection = MergedGroup) # if(substr(MergedGroup, 0, 3)== "CLL"){"CLL"} else { "HD"})
+  createNetworkFromDataFrames(nodes, edges, title = stim_point, collection = stim_point)
   # You should see a network rn frfr
   
   # Setting style for network OR creating it first, then setting the style. If else so we do not remake this style over and over.
@@ -726,7 +730,7 @@ for (i in 1:2){
     ATT_path <- paste(data_path, paste(patient, "_ATT_processed.csv",sep = ""), sep = "")
     ATT <- read_csv(ATT_path, show_col_types = F)
     # 
-    Create_Network(ATT = ATT, SIF= SIF, MergedGroup = patient)
+    Create_Network(ATT = ATT, SIF= SIF, MergedGroup = stim_point)
   }
 }
 # cosmos_inputs <- T48_cosmos_inputs
