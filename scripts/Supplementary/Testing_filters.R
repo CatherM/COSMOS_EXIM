@@ -60,9 +60,9 @@ filter_df <- data.frame(patient = character(),
                         n_metab_input = integer(),
                         f_metab = numeric(),
                         stringsAsFactors = FALSE)
-max_depth <- 4
+max_depth <- 8
 
-cosmos_inputs <- T0_cosmos_inputs # T0 or T48
+cosmos_inputs <- T48_cosmos_inputs # T0 or T48
 
 # Check for highest filter_s possible
 for (patient in names(cosmos_inputs)) {
@@ -124,7 +124,7 @@ for (patient in names(cosmos_inputs)) {
       # Handle the error by decrementing filter_m
       
       # message(paste("Error in processing patient:", patient, "-", e$message))
-      if (filter_m <= 1.3) {
+      if (filter_m <= 1.5) {
         # Reset filter_m to 2.0 and decrement filter_s
         filter_m <<- 2.0
         filter_s <<- filter_s - 0.1
@@ -150,7 +150,7 @@ for (patient in names(cosmos_inputs)) {
   filter_m <- 2.0  # Start filter_m at 1.5
   
   
-  while (filter_m >= 0.5) {  # Continue while filter_m is valid
+  while (filter_m >= 1.5) {  # Continue while filter_m is valid
     skip_to_next <- FALSE
     
     tryCatch({

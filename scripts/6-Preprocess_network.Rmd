@@ -24,9 +24,9 @@ library(stringr)
 Set variables, what networks do you want to preprocess?
 ```{r}
 # edit these based on variables just to create network
-max_depth <- 3
+max_depth <- 8
 # stim_point <- "T0" # automated
-filter <- "s20m07" 
+filter <- "s20m15" 
 ```
 
 

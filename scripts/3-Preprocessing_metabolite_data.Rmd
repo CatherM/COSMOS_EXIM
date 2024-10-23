@@ -99,12 +99,13 @@ mtext("CD3 T cells of HD and CLL patients 48h after CD3 CD28 stimulation", side 
 
 
 ```
-There are some outliers in the left-most bins. This is especially notable in the histogram representing the log-transformed values in the unstimulated dataset. What metabolites are causing these left-most bins and why are the values so low?
+There are some outliers in the left-most bins. This is especially notable in the histogram representing the log-transformed values in the unstimulated dataset (T0). What metabolites are causing these left-most bins and why are the values so low?
 Let's investigate this in the following chunk, in which we check the lowest-most bin:
 
 ```{r}
 # Choose here which timepoint to analyze
-metabs_df <- T48_metabs_hmdb
+metabs_df <- T0_metabs_hmdb
+# metabs_df <- T48_metabs_hmdb
 
 # Apply log2 transformation safely
 log_metabs_df <- log2(metabs_df)

@@ -254,20 +254,27 @@ Create_Network <- function(ATT, SIF, MergedGroup){
   nodes$dist <- NULL
   nodes$HMDB.name <- NULL
   nodes <- nodes |>
-    mutate(Activity = coalesce(log2FoldChange, Log2_fold_change, 0))
+    mutate(Activity = coalesce(log2FoldChange, Log2_fold_change, 0)) |>
+    mutate(Activity = ifelse(Activity < 0.5 & Activity > -0.5, 0, Activity)) # only keep activity above 0.5 or below -0.5
+  write.csv(nodes, file = paste(data_path, paste(MergedGroup, ".csv", sep = ""), sep = "DA_All_Nodes"))
   
   # Two things: 1: Adding moleculeType column to nodes table; 2: putting shapes to these
   # Step 1 should be done earlier, maybe in 6 - Preprocess_network.Rmd.
-  #StringDB Tryout
+  # Create StringDB network 
   ATT_string_interaction_cmd <- paste('string protein query taxonID=9606 cutoff=0.99 query=', paste(nodes$id, collapse=","),'"',sep="")
   commandsGET(ATT_string_interaction_cmd )
+  
+  # Pull MoleculeType from StringDB network
   string_nodes <- getTableColumns(table = "node", columns = c("display name", "target::family"), network = "STRING network")
   colnames(string_nodes) <- c("id", "moleculeType")
   write.csv(string_nodes, file = paste(data_path, paste(MergedGroup, ".csv", sep = ""), sep = "StringDB_"))
   string_nodes <- merge(nodes, string_nodes, by = "id", all.x = T)
   nodes <- string_nodes |>
     mutate(moleculeType = coalesce(moleculeType.x, moleculeType.y, "Other"))
-
+  
+  edges <- edges |>
+    filter(source %in% nodes$id) |>
+    filter(target %in% nodes$id)
   
   closeSession(save.before.closing = F)
 
@@ -282,18 +289,19 @@ Create_Network <- function(ATT, SIF, MergedGroup){
     style.name = "COSMOS_Style"
     defaults <- list(NODE_SHAPE="ROUND_RECTANGLE",
                      NODE_SIZE=50,
-                     EDGE_TRANSPARENCY=255)
+                     EDGE_TRANSPARENCY=120,
+                     NODE_LABEL_POSITION = "S,N,c,0.00,0.00")
     nodeLabels <- mapVisualProperty('node label','id','p')
     nodeFills <- mapVisualProperty('node fill color',
                                    'Activity',
                                    'c',
-                                   c(-1, -0.000001, 0,0.0000001, 1),
-                                   c('#CC0000', '#FFAFAF', '#FFFFFF', '#90EE90', '#009900'))
+                                   c(-1, 0, 1),
+                                   c('#FF0000', '#FFFFFF', '#21acff'))
     nodeBorderWidth <- mapVisualProperty('node border width',
                                          'measured',
                                          'd',
                                          c(0.0, 1.0),
-                                         c(0, 4))
+                                         c(0.5, 4))
     arrowShapes <- mapVisualProperty('Edge Target Arrow Shape', # What style property we are mapping
                                      'interaction', # What table column we are using for it
                                      'd', # Type of mapping (discrete)
@@ -324,27 +332,27 @@ Create_Network <- function(ATT, SIF, MergedGroup){
   layoutNetwork("degree-circle")
   
   # Save session & a pdf picture of it
-  saveSession(filename = paste(data_path, MergedGroup, sep = "Merged_Network_"))
+  saveSession(filename = paste(data_path, MergedGroup, sep = "DA_Merged_Network_"))
   
-  exportImage(paste(data_path, MergedGroup, sep = "Degree_Circle_"), 'PDF') #.pdf
+  exportImage(paste(data_path, MergedGroup, sep = "DA_Degree_Circle_"), 'PDF') #.pdf
   
   
   # Select nodes that have a high interconnectivity (>10 edges to other nodes)
-  createDegreeFilter("ImportantNodes", criterion = c(10,100), network = MergedGroup, apply = T)
-  Important_Nodes <- data.frame(getSelectedNodes())
-  Important_Nodes <- na.exclude(Important_Nodes)
+  # createDegreeFilter("ImportantNodes", criterion = c(10,100), network = MergedGroup, apply = T)
+  # Important_Nodes <- data.frame(getSelectedNodes())
+  # Important_Nodes <- na.exclude(Important_Nodes)
   
   # IF there are highly interconnected nodes, safe them and their activity.
-  if(nrow(Important_Nodes)>0){
-    Important_df <- merge(Important_Nodes, Merged_ATT_CLL[c(1,5)], by.x = "getSelectedNodes..", by.y = "Nodes", all.x = T)
-    names(Important_df) <- c("Nodes", "Act_CLL")
-    Important_df <- merge(Important_df, Merged_ATT_HD[c(1,5)], by.x = "Nodes", by.y = "Nodes", all.x = T)
-    names(Important_df) <- c("Nodes", "Act_CLL", "Act_HD")
-    print(Important_df)
-    
-    writeLines(Important_Nodes$getSelectedNodes.., con = paste(data_path, paste(MergedGroup, ".txt", sep = ""), sep = "Important_Nodes_"))
-    write.csv(Important_df, file = paste(data_path, paste(MergedGroup, ".csv", sep = ""), sep = "Important_Nodes_Act_"))
-  }
+  # if(nrow(Important_Nodes)>0){
+  #   Important_df <- merge(Important_Nodes, Merged_ATT_CLL[c(1,5)], by.x = "getSelectedNodes..", by.y = "Nodes", all.x = T)
+  #   names(Important_df) <- c("Nodes", "Act_CLL")
+  #   Important_df <- merge(Important_df, Merged_ATT_HD[c(1,5)], by.x = "Nodes", by.y = "Nodes", all.x = T)
+  #   names(Important_df) <- c("Nodes", "Act_CLL", "Act_HD")
+  #   print(Important_df)
+  #   
+  #   writeLines(Important_Nodes$getSelectedNodes.., con = paste(data_path, paste(MergedGroup, ".txt", sep = ""), sep = "Important_Nodes_"))
+  #   write.csv(Important_df, file = paste(data_path, paste(MergedGroup, ".csv", sep = ""), sep = "Important_Nodes_Act_"))
+  # }
 }
 ```
 
@@ -369,7 +377,7 @@ Below are the variables of the networks you want to visualize.
 ```{r}
 max_depth <- 3
 filter <- "s10m05"
-stim_point <- "T0"
+stim_point <- "T48"
 ```
 
 ### Setup: network paths
@@ -426,17 +434,17 @@ Merged_ATT_HD <- result$Merged_ATT
 Merged_SIF_HD <- result$Merged_SIF 
 
 # CLL
-# result <- filter_merged_files(Merged_ATT_CLL, Merged_SIF_CLL, majority_filter_function)
+result <- filter_merged_files(Merged_ATT_CLL, Merged_SIF_CLL, majority_filter_function)
 # result <- filter_merged_files(Merged_ATT_CLL, Merged_SIF_CLL, minus_filter_function)
-result <- filter_merged_files(Merged_ATT_CLL, Merged_SIF_CLL, max_filter_function)
+# result <- filter_merged_files(Merged_ATT_CLL, Merged_SIF_CLL, max_filter_function)
 # result <- filter_merged_files(Merged_ATT_CLL, Merged_SIF_CLL, min_filter_function)
 
 Filtered_Merged_ATT_CLL <- result$Filtered_Merged_ATT
 Merged_SIF_CLL <- result$Merged_SIF 
 
 # HD
-# result <- filter_merged_files(Merged_ATT_HD, Merged_SIF_HD, majority_filter_function)
-result <- filter_merged_files(Merged_ATT_HD, Merged_SIF_HD, minus_filter_function)
+result <- filter_merged_files(Merged_ATT_HD, Merged_SIF_HD, majority_filter_function)
+# result <- filter_merged_files(Merged_ATT_HD, Merged_SIF_HD, minus_filter_function)
 # result <- filter_merged_files(Merged_ATT_HD, Merged_SIF_HD, max_filter_function)
 # result <- filter_merged_files(Merged_ATT_HD, Merged_SIF_HD, min_filter_function)
 

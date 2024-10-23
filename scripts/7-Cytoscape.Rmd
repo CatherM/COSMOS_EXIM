@@ -44,17 +44,15 @@ merge_files <- function(all_files, data_path, group_type) {
     # Import processed SIF and ATT files for the patient
     SIF_path <- paste(data_path, paste(patient, "_SIF_processed.csv", sep = ""), sep = "")
     SIF <- read_csv(SIF_path, show_col_types = FALSE) |> unique()
-    
     ATT_path <- paste(data_path, paste(patient, "_ATT_processed.csv", sep = ""), sep = "")
     ATT <- read_csv(ATT_path, show_col_types = FALSE) |> unique()
-    
     # Check if CLL or HD patient
     if (startsWith(patient, group_type)){
       # Edges / SIF part
       for (i in 1:nrow(SIF)) { 
         Edge <- SIF[i, ] 
         Merged_SIF <- rbind(Merged_SIF, Edge) 
-      } # Merge result: All edges for all CLL patiens
+      } # Merge result: All edges for all CLL patients
       
       # Nodes / ATT part
       for (Noderow in unique(ATT$Nodes)) {
@@ -187,23 +185,35 @@ Create_Network <- function(ATT, SIF, MergedGroup){
                       stringsAsFactors = FALSE)
   
   # Two things: 1: Adding moleculeType column to nodes table; 2: putting shapes to these
-  # Step 1 should be done earlier, maybe in 6 - Preprocess_network.Rmd.
-  #StringDB Tryout
+  
+  # Creating SRINGDB network:
   ATT_string_interaction_cmd <- paste('string protein query taxonID=9606 cutoff=0.99 query=', paste(nodes$id, collapse=","),'"',sep="")
   commandsGET(ATT_string_interaction_cmd )
-  string_nodes <- getTableColumns(table = "node", columns = c("display name", "target::family"), network = "STRING network")
-  colnames(string_nodes) <- c("id", "moleculeType")
-  write.csv(string_nodes, file = paste(data_path, paste(MergedGroup, ".csv", sep = ""), sep = "StringDB_"))
-  string_nodes <- merge(nodes, string_nodes, by = "id", all.x = T)
+  
+  ##### Pulling moleculeType from StringDB networks ##### 
+  # creating string_nodes df, containing all node names and their moleculetype given by StringDB
+  string_nodes <- getTableColumns(table = "node", columns = c("display name", "target::family"), network = "STRING network") 
+  colnames(string_nodes) <- c("id", "moleculeType") 
+  write.csv(string_nodes, file = paste(data_path, paste(MergedGroup, ".csv", sep = ""), sep = "StringDB_")) # Saving stringDB nodenames
+  # merging string_nodes with nodes, this creates 2 moleculeType columns: 1 Metabolites and 1 all other 
+  string_nodes <- merge(nodes, string_nodes, by = "id", all.x = T) 
+  # merging columns into 1 column: moleculeType. It is either Metabolite, whatever StringDB assigned or 'Other' (in that order of operation) 
   nodes <- string_nodes |>
     mutate(moleculeType = coalesce(moleculeType.x, moleculeType.y, "Other"))
+  
+  # Filter edges: ONly edges connecting nodes that are present in the network. 
+  edges <- edges |> 
+    filter(source %in% nodes$id) |>
+    filter(target %in% nodes$id)
   
   
   closeSession(save.before.closing = F)
 
   
-  createNetworkFromDataFrames(nodes, edges, title = MergedGroup, collection = MergedGroup) # if(substr(MergedGroup, 0, 3)== "CLL"){"CLL"} else { "HD"})
+  createNetworkFromDataFrames(nodes, edges, title = MergedGroup, collection = MergedGroup) 
   # You should see a network rn frfr
+  write.csv(nodes, file = paste(data_path, paste(MergedGroup, ".csv", sep = ""), sep = "_All_Nodes"))
+  
   
   # Setting style for network OR creating it first, then setting the style. If else so we do not remake this style over and over.
   if (style.name == "COSMOS_Style"){
@@ -211,25 +221,26 @@ Create_Network <- function(ATT, SIF, MergedGroup){
   } else {
     style.name = "COSMOS_Style"
     defaults <- list(NODE_SHAPE="ROUND_RECTANGLE",
-                     NODE_SIZE=50,
-                     EDGE_TRANSPARENCY=255)
+                     NODE_SIZE=40,
+                     EDGE_TRANSPARENCY=120,
+                     NODE_LABEL_POSITION = "S,N,c,0.00,0.00")
     nodeLabels <- mapVisualProperty('node label','id','p')
     nodeFills <- mapVisualProperty('node fill color',
                                    'Activity',
                                    'c',
-                                   c(-1, 1),
-                                   c('#CC0000', '#009900'))
+                                   c(-1, 0, 1),
+                                   c('#FF0000', '#FFFFFF', '#21acff'))
     nodeBorderWidth <- mapVisualProperty('node border width',
                                          'measured',
                                          'd',
                                          c(0.0, 1.0),
-                                         c(0, 4))
+                                         c(0.5, 4))
     arrowShapes <- mapVisualProperty('Edge Target Arrow Shape', # What style property we are mapping
                                      'interaction', # What table column we are using for it
                                      'd', # Type of mapping (discrete)
                                      c("-1", "1"),c("T","Arrow"))
     edgeWidth <- mapVisualProperty('edge width','weight','p')
-  
+    
   
     createVisualStyle(style.name, defaults, list(nodeLabels,nodeFills,nodeBorderWidth,arrowShapes,edgeWidth))
     setVisualStyle(style.name)
@@ -264,8 +275,8 @@ Create_Network <- function(ATT, SIF, MergedGroup){
   Important_Nodes <- data.frame(getSelectedNodes())
   Important_Nodes <- na.exclude(Important_Nodes)
   
-  # IF there are highly interconnected nodes, safe them and their activity.
-  if(nrow(Important_Nodes)>0){
+  # IF there are highly interconnected nodes, safe them and their activity. But only for Merged networks. (not individual networks)
+  if(nrow(Important_Nodes)>0 && (MergedGroup == "CLL" || MergedGroup == "HD")){
     Important_df <- merge(Important_Nodes, Merged_ATT_CLL[c(1,5)], by.x = "getSelectedNodes..", by.y = "Nodes", all.x = T)
     names(Important_df) <- c("Nodes", "Act_CLL")
     Important_df <- merge(Important_df, Merged_ATT_HD[c(1,5)], by.x = "Nodes", by.y = "Nodes", all.x = T)
@@ -298,7 +309,7 @@ Below are the variables of the networks you want to visualize.
 
 ```{r}
 max_depth <- 3
-filter <- "s20m07"
+filter <- "s10m05"
 stim_point <- "T0"
 ```
 
@@ -356,18 +367,18 @@ Merged_ATT_HD <- result$Merged_ATT
 Merged_SIF_HD <- result$Merged_SIF 
 
 # CLL
-result <- filter_merged_files(Merged_ATT_CLL, Merged_SIF_CLL, majority_filter_function)
+result <- filter_merged_files(Merged_ATT_CLL, Merged_SIF_CLL, majority_filter_function) # T48 + T0 BIG
 # result <- filter_merged_files(Merged_ATT_CLL, Merged_SIF_CLL, minus_filter_function)
-# result <- filter_merged_files(Merged_ATT_CLL, Merged_SIF_CLL, max_filter_function)
+# result <- filter_merged_files(Merged_ATT_CLL, Merged_SIF_CLL, max_filter_function) # T0 SMALL
 # result <- filter_merged_files(Merged_ATT_CLL, Merged_SIF_CLL, min_filter_function)
 
 Filtered_Merged_ATT_CLL <- result$Filtered_Merged_ATT
 Merged_SIF_CLL <- result$Merged_SIF 
 
 # HD
-result <- filter_merged_files(Merged_ATT_HD, Merged_SIF_HD, majority_filter_function)
-# result <- filter_merged_files(Merged_ATT_HD, Merged_SIF_HD, minus_filter_function)
-# result <- filter_merged_files(Merged_ATT_HD, Merged_SIF_HD, max_filter_function)
+# result <- filter_merged_files(Merged_ATT_HD, Merged_SIF_HD, majority_filter_function) # T48
+result <- filter_merged_files(Merged_ATT_HD, Merged_SIF_HD, minus_filter_function) # T0 BIG network
+# result <- filter_merged_files(Merged_ATT_HD, Merged_SIF_HD, max_filter_function) # T0 SMALL network
 # result <- filter_merged_files(Merged_ATT_HD, Merged_SIF_HD, min_filter_function)
 
 Filtered_Merged_ATT_HD <- result$Filtered_Merged_ATT
@@ -377,7 +388,7 @@ Merged_SIF_HD <- result$Merged_SIF
 ```
 
 
-### Creating networks for merged:
+### Creating networks for merged networks:
 
 ```{r}
 # CLL
@@ -389,13 +400,56 @@ Create_Network(ATT = Filtered_Merged_ATT_HD, SIF= Merged_SIF_HD, MergedGroup = p
 ```
 
 #### Creating networks for individuals:
-
+In this loop, networks are created for each individual (without merging), for each timepoint. 
+PDF images are created for each network, in the 'hierarchichal' layout. 
 ```{r}
-# patient = "CLL2105_T48" # Fill it in
-# SIF_path <- paste(data_path, paste(patient, "_SIF_processed.csv", sep = ""), sep = "")
-# SIF <- read_csv(SIF_path, show_col_types = F)
-# ATT_path <- paste(data_path, paste(patient, "_ATT_processed.csv",sep = ""), sep = "")
-# ATT <- read_csv(ATT_path, show_col_types = F)
 # 
-# Create_Network(ATT = ATT, SIF= SIF, MergedGroup = patient)
+# # Parameters
+# max_depth <- 3
+# filter <- "s10m05"
+# 
+# # For each timepoint
+# for(i in 1:2){
+#   stim_point <- c("T0", "T48")[i]
+#   
+#   # Prepare path
+#   core_path <- "L:/basic/divg/EXIM/ImmunoHematology/Cathy Magnée/Data/CD3_HDvsCLL/CosmosR"
+#   result_path <- paste("/Networks/d", max_depth, sep = "") # Add depth folder
+#   result_path <- paste(result_path, paste("/f", filter, sep = ""), sep = "") # Add filter folder
+#   result_path <- paste(result_path, paste("/", stim_point, sep = ""), sep = "") # Add stim/unstim point folder
+#   result_path <- paste(result_path, "/csvs/", sep = "") # Add csv folder
+#   data_path <- paste(core_path, result_path, sep = "")
+#   
+#   
+#   all_files <- list.files(path = data_path, pattern = "*_SIF_processed.csv", full.names = TRUE)
+#   
+#   # Prepare style
+#   style.name = "empty"
+#   
+#   # Loop through files
+#   for (files in all_files){
+#     # Extract patient information from file name
+#     patient <- str_extract(files, "[^/]+(?=_SIF)")
+#     
+#     # Import processed SIF and ATT files for the patient
+#     SIF_path <- paste(data_path, paste(patient, "_SIF_processed.csv", sep = ""), sep = "")
+#     SIF <- read_csv(SIF_path, show_col_types = FALSE) |> unique()
+#     ATT_path <- paste(data_path, paste(patient, "_ATT_processed.csv", sep = ""), sep = "")
+#     ATT <- read_csv(ATT_path, show_col_types = FALSE) |> unique()
+#     
+#     # Use function: Create_Network, which is created in above chunks. 
+#     Create_Network(ATT = ATT, SIF= SIF, MergedGroup = patient)
+#     
+#     # Deselect nodes + change layout for image
+#     clearSelection()
+#     layoutNetwork("hierarchical")
+#     
+#     # Save session & a pdf picture of it
+#     saveSession(filename = paste(data_path, patient, sep = "Network_"))
+#     
+#     # Image is for the Github
+#     exportImage(paste("../network_figures/individual/", patient, sep = "Hierarchical_"), 'PDF') #.pdf
+#   }
+# }
+
 ```
