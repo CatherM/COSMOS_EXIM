@@ -51,16 +51,19 @@ library(dplyr)
 ```
 
 Data path: AMC:
+
 ```{r}
 T0_input_path <- "L:\\basic\\divg\\EXIM\\ImmunoHematology\\Cathy Magnée\\Data\\CD3_HDvsCLL\\CosmosR\\T0_cosmos_inputs.RData"
 T48_input_path <- "L:\\basic\\divg\\EXIM\\ImmunoHematology\\Cathy Magnée\\Data\\CD3_HDvsCLL\\CosmosR\\T48_cosmos_inputs.RData"
 ```
 
 Laptop:
+
 ```{r}
 # T0_input_path <- "../ourdata/cosmos/T0_cosmos_inputs.RData"
 # T48_input_path <- "../ourdata/cosmos/T48_cosmos_inputs.RData"
 ```
+
 Adjust the above chunks accordingly
 
 Loading data:
@@ -76,6 +79,7 @@ load(T48_input_path)
 ```
 
 ### Defining Cplex options
+
 In the code block below, first the my_options list is created. If you
 have a Linux OS, this first line is all you need to run. If not: Same.
 Adjust the options so they fit your requirements. This is the part where
@@ -88,6 +92,7 @@ through this nicely.
 
 Once you have IBM Cplex solver, adjust the location (though I think it
 should be similar to mine).
+
 ```{r}
 
 my_options <- default_CARNIVAL_options(solver = "cplex")
@@ -127,8 +132,8 @@ assign to the metabolic measurements: Possible values are "r", "c", "e",
 
 "g", golgi apparatus
 
-
 ### Defining variables, create dfs
+
 ```{r}
 
 max_depth <- 3
@@ -137,7 +142,6 @@ seconds_per_step <- 20 * 3600 / 64 / 6 # Time in h * Seconds in an hour / Amount
 time_df <- data.frame()
 
 ```
-
 
 ### Optional: Calculating input per filtering input
 
@@ -173,8 +177,11 @@ for (patient in names(cosmos_inputs)){
 ```
 
 # Running
-The chunk below runs cosmos for both timepoints, according to the variables you set in the chunks above. 
-Do not forget to edit the filter accordingly!
+
+The chunk below runs cosmos for both timepoints, according to the
+variables you set in the chunks above. Do not forget to edit the filter
+accordingly!
+
 ```{r, error = FALSE, warning=FALSE,message=FALSE}
 start.time <- Sys.time()
 for (i in 1:2){
@@ -338,5 +345,3 @@ end.time <- Sys.time()
 time.taken <- round(end.time - start.time, 2)
 time.taken
 ```
-
-

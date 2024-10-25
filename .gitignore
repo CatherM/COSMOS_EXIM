@@ -1,3 +1,11 @@
+# old / unused scripts
+scripts/5-Run_COSMOS_old.Rmd
+scripts/8-Post_Network_Analysis.R
+
+# temp folders
+tmpcache/
+scripts/tmpcache/
+
 # Cplex and other log files
 cplex/
 omnipathr-log/
