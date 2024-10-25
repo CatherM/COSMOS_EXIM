@@ -310,7 +310,7 @@ Below are the variables of the networks you want to visualize.
 ```{r}
 max_depth <- 3
 filter <- "s10m05"
-stim_point <- "T0"
+stim_point <- "T48"
 ```
 
 ### Setup: network paths
@@ -369,16 +369,16 @@ Merged_SIF_HD <- result$Merged_SIF
 # CLL
 result <- filter_merged_files(Merged_ATT_CLL, Merged_SIF_CLL, majority_filter_function) # T48 + T0 BIG
 # result <- filter_merged_files(Merged_ATT_CLL, Merged_SIF_CLL, minus_filter_function)
-# result <- filter_merged_files(Merged_ATT_CLL, Merged_SIF_CLL, max_filter_function) # T0 SMALL
+# result <- filter_merged_files(Merged_ATT_CLL, Merged_SIF_CLL, max_filter_function) # T0 + T48 SMALL
 # result <- filter_merged_files(Merged_ATT_CLL, Merged_SIF_CLL, min_filter_function)
 
 Filtered_Merged_ATT_CLL <- result$Filtered_Merged_ATT
 Merged_SIF_CLL <- result$Merged_SIF 
 
 # HD
-# result <- filter_merged_files(Merged_ATT_HD, Merged_SIF_HD, majority_filter_function) # T48
-result <- filter_merged_files(Merged_ATT_HD, Merged_SIF_HD, minus_filter_function) # T0 BIG network
-# result <- filter_merged_files(Merged_ATT_HD, Merged_SIF_HD, max_filter_function) # T0 SMALL network
+result <- filter_merged_files(Merged_ATT_HD, Merged_SIF_HD, majority_filter_function) # T0 + T48 Big network
+# result <- filter_merged_files(Merged_ATT_HD, Merged_SIF_HD, minus_filter_function) # T0 Small network
+# result <- filter_merged_files(Merged_ATT_HD, Merged_SIF_HD, max_filter_function) # T48 small network
 # result <- filter_merged_files(Merged_ATT_HD, Merged_SIF_HD, min_filter_function)
 
 Filtered_Merged_ATT_HD <- result$Filtered_Merged_ATT
@@ -389,13 +389,29 @@ Merged_SIF_HD <- result$Merged_SIF
 
 
 ### Creating networks for merged networks:
-
+Create networks functions are utilized. Then, network selection is cleared and network is saved in appropriate folder. 
 ```{r}
 # CLL
 Create_Network(ATT = Filtered_Merged_ATT_CLL, SIF= Merged_SIF_CLL, MergedGroup = paste(stim_point, "CLL", sep = "_"))
+# clearSelection()
+# layoutNetwork("hierarchical")
+
+# Save session & a pdf picture of it
+# saveSession(filename = paste(data_path, stim_point, sep = "Network_"))
+
+# Image is for the Github
+# exportImage(paste("../network_figures/merged/big/", stim_point, sep = "Hierarchical_CLL_"), 'PDF') #.pdf
 
 # HD
 Create_Network(ATT = Filtered_Merged_ATT_HD, SIF= Merged_SIF_HD, MergedGroup = paste(stim_point, "HD", sep = "_"))
+# clearSelection()
+# layoutNetwork("hierarchical")
+
+# Save session & a pdf picture of it
+# saveSession(filename = paste(data_path, stim_point, sep = "Network_"))
+
+# Image is for the Github
+# exportImage(paste("../network_figures/merged/big/", stim_point, sep = "Hierarchical_HD_"), 'PDF') #.pdf
 
 ```
 
