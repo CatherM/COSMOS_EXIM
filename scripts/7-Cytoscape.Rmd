@@ -246,7 +246,7 @@ Create_Network <- function(ATT, SIF, MergedGroup){
     setVisualStyle(style.name)
   }
   
-  
+  # Set layout to what you want. Choices available in getLayoutNames()
   # setLayoutProperties("degree-circle")
   # 2: Connecting shapes to moleculeType
   
@@ -262,7 +262,7 @@ Create_Network <- function(ATT, SIF, MergedGroup){
                'HEXAGON', 'DIAMOND',
                'OCTAGON', 'ROUND RECTANGLE')
   setNodeShapeMapping (column, values, shapes, style.name = style.name)
-  layoutNetwork("degree-circle")
+  # layoutNetwork("degree-circle")
   
   # Save session & a pdf picture of it
   saveSession(filename = paste(data_path, MergedGroup, sep = "Merged_Network_"))
@@ -392,7 +392,7 @@ Merged_SIF_HD <- result$Merged_SIF
 Create networks functions are utilized. Then, network selection is cleared and network is saved in appropriate folder. 
 ```{r}
 # CLL
-Create_Network(ATT = Filtered_Merged_ATT_CLL, SIF= Merged_SIF_CLL, MergedGroup = paste(stim_point, "CLL", sep = "_"))
+# Create_Network(ATT = Filtered_Merged_ATT_CLL, SIF= Merged_SIF_CLL, MergedGroup = paste(stim_point, "CLL", sep = "_"))
 # clearSelection()
 # layoutNetwork("hierarchical")
 
@@ -403,7 +403,7 @@ Create_Network(ATT = Filtered_Merged_ATT_CLL, SIF= Merged_SIF_CLL, MergedGroup =
 # exportImage(paste("../network_figures/merged/big/", stim_point, sep = "Hierarchical_CLL_"), 'PDF') #.pdf
 
 # HD
-Create_Network(ATT = Filtered_Merged_ATT_HD, SIF= Merged_SIF_HD, MergedGroup = paste(stim_point, "HD", sep = "_"))
+# Create_Network(ATT = Filtered_Merged_ATT_HD, SIF= Merged_SIF_HD, MergedGroup = paste(stim_point, "HD", sep = "_"))
 # clearSelection()
 # layoutNetwork("hierarchical")
 
@@ -421,51 +421,65 @@ PDF images are created for each network, in the 'hierarchichal' layout.
 ```{r}
 # 
 # # Parameters
-# max_depth <- 3
-# filter <- "s10m05"
-# 
-# # For each timepoint
-# for(i in 1:2){
-#   stim_point <- c("T0", "T48")[i]
-#   
-#   # Prepare path
-#   core_path <- "L:/basic/divg/EXIM/ImmunoHematology/Cathy Magnée/Data/CD3_HDvsCLL/CosmosR"
-#   result_path <- paste("/Networks/d", max_depth, sep = "") # Add depth folder
-#   result_path <- paste(result_path, paste("/f", filter, sep = ""), sep = "") # Add filter folder
-#   result_path <- paste(result_path, paste("/", stim_point, sep = ""), sep = "") # Add stim/unstim point folder
-#   result_path <- paste(result_path, "/csvs/", sep = "") # Add csv folder
-#   data_path <- paste(core_path, result_path, sep = "")
-#   
-#   
-#   all_files <- list.files(path = data_path, pattern = "*_SIF_processed.csv", full.names = TRUE)
-#   
-#   # Prepare style
-#   style.name = "empty"
-#   
-#   # Loop through files
-#   for (files in all_files){
-#     # Extract patient information from file name
-#     patient <- str_extract(files, "[^/]+(?=_SIF)")
-#     
-#     # Import processed SIF and ATT files for the patient
-#     SIF_path <- paste(data_path, paste(patient, "_SIF_processed.csv", sep = ""), sep = "")
-#     SIF <- read_csv(SIF_path, show_col_types = FALSE) |> unique()
-#     ATT_path <- paste(data_path, paste(patient, "_ATT_processed.csv", sep = ""), sep = "")
-#     ATT <- read_csv(ATT_path, show_col_types = FALSE) |> unique()
-#     
-#     # Use function: Create_Network, which is created in above chunks. 
-#     Create_Network(ATT = ATT, SIF= SIF, MergedGroup = patient)
-#     
-#     # Deselect nodes + change layout for image
-#     clearSelection()
-#     layoutNetwork("hierarchical")
-#     
-#     # Save session & a pdf picture of it
-#     saveSession(filename = paste(data_path, patient, sep = "Network_"))
-#     
-#     # Image is for the Github
-#     exportImage(paste("../network_figures/individual/", patient, sep = "Hierarchical_"), 'PDF') #.pdf
-#   }
-# }
+max_depth <- 3
+filter <- "s10m05"
+
+# Initialize empty data frame to store the results
+network_summary <- data.frame(patient = character(),
+                              n_nodes = integer(),
+                              n_edges = integer(),
+                              stringsAsFactors = FALSE)
+
+# For each timepoint
+for(i in 1:2){
+  stim_point <- c("T0", "T48")[i]
+
+  # Prepare path
+  core_path <- "L:/basic/divg/EXIM/ImmunoHematology/Cathy Magnée/Data/CD3_HDvsCLL/CosmosR"
+  result_path <- paste("/Networks/d", max_depth, sep = "") # Add depth folder
+  result_path <- paste(result_path, paste("/f", filter, sep = ""), sep = "") # Add filter folder
+  result_path <- paste(result_path, paste("/", stim_point, sep = ""), sep = "") # Add stim/unstim point folder
+  result_path <- paste(result_path, "/csvs/", sep = "") # Add csv folder
+  data_path <- paste(core_path, result_path, sep = "")
+
+
+  all_files <- list.files(path = data_path, pattern = "*_SIF_processed.csv", full.names = TRUE)
+
+  # Prepare style
+  style.name = "empty"
+
+  # Loop through files
+  for (files in all_files){
+    # Extract patient information from file name
+    patient <- str_extract(files, "[^/]+(?=_SIF)")
+
+    # Import processed SIF and ATT files for the patient
+    SIF_path <- paste(data_path, paste(patient, "_SIF_processed.csv", sep = ""), sep = "")
+    SIF <- read_csv(SIF_path, show_col_types = FALSE) |> unique()
+    ATT_path <- paste(data_path, paste(patient, "_ATT_processed.csv", sep = ""), sep = "")
+    ATT <- read_csv(ATT_path, show_col_types = FALSE) |> unique()
+    
+    # Get the number of rows in SIF and ATT for node and edge counts
+    n_edges <- nrow(SIF)
+    n_nodes <- nrow(ATT)
+    
+    # Append the counts to the data frame
+    network_summary <- rbind(network_summary, data.frame(patient = patient, n_nodes = n_nodes, n_edges = n_edges))
+
+    
+    # Use function: Create_Network, which is created in above chunks.
+    Create_Network(ATT = ATT, SIF= SIF, MergedGroup = patient)
+
+    # Deselect nodes + change layout for image
+    clearSelection()
+    # layoutNetwork("hierarchical")
+
+    # Save session & a pdf picture of it
+    saveSession(filename = paste(data_path, patient, sep = "Network_"))
+
+    # Image is for the Github
+    exportImage(paste("../network_figures/individual/", patient, sep = ""), 'PDF') #.pdf
+  }
+}
 
 ```
