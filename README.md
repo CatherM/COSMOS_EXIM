@@ -1,12 +1,13 @@
 # COSMOS_EXIM
 
-This repository is made as a back-up and version control for a research project at the Amsterdam UMC, location AMC Experimental Immunology-Hematology department. This project will utilize Saezlab's method COSMOS for regulatory network generation through the integration of multi-omic data. In this research, we applies the COSMOS method to gene expression and metabolomics datasets of CLL and healthy donor T cells.
+This repository is made as a back-up and version control for a research project at the Amsterdam UMC, location AMC Experimental Immunology-Hematology department. This project will utilize Saezlab's method COSMOS for regulatory network generation through the integration of multi-omic data. In this research, we applied the COSMOS method to gene expression and metabolomics datasets of CLL and healthy donor T cells.
 
 ## Pipeline explanation
 
 ![Network generation pipeline](https://github.com/CatherM/COSMOS_EXIM/tree/main/network_figures/Cosmos_Exim_workflow_drawio.pdf)
 
 ## Output
+
 
 ## Requirements
 
