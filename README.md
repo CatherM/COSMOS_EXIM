@@ -4,7 +4,7 @@ This repository is made as a back-up and version control for a research project 
 
 ## Pipeline explanation
 
-![Network generation pipeline](https://github.com/CatherM/COSMOS_EXIM/tree/main/network_figures/COSMOS_EXIM_workflow_drawio.png?raw=true)
+![Network generation pipeline](https://github.com/CatherM/COSMOS_EXIM/tree/main/network_figures/COSMOS_EXIM_workflow.png)
 
 ## Output
 
